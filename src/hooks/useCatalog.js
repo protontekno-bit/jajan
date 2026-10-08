@@ -33,10 +33,17 @@ export const useCatalog = () => {
       const saved = localStorage.getItem(APP_CONFIG.storageKeys.categories);
       if (saved) {
         const parsed = JSON.parse(saved);
-        const existingIds = new Set(parsed.map((c) => c.id));
-        const missingDefaults = DEFAULT_CATEGORIES.filter((c) => !existingIds.has(c.id));
+        const existingIds = new Set(parsed.map((c) => String(c.id).toLowerCase()));
+        const missingDefaults = DEFAULT_CATEGORIES.filter(
+          (c) => !existingIds.has(String(c.id).toLowerCase())
+        );
         if (missingDefaults.length > 0) {
           const merged = [...parsed, ...missingDefaults];
+          merged.sort((a, b) => {
+            if (a.id === 'all') return -1;
+            if (b.id === 'all') return 1;
+            return (a.order ?? 0) - (b.order ?? 0);
+          });
           localStorage.setItem(APP_CONFIG.storageKeys.categories, JSON.stringify(merged));
           return merged;
         }
@@ -64,7 +71,26 @@ export const useCatalog = () => {
     const unsubscribe = subscribeToCloudCategories(
       (cloudCats) => {
         if (cloudCats && cloudCats.length > 0) {
-          setCategoriesList(cloudCats);
+          const existingCatIds = new Set(cloudCats.map((c) => String(c.id).toLowerCase()));
+          const missingDefaults = DEFAULT_CATEGORIES.filter(
+            (c) => !existingCatIds.has(String(c.id).toLowerCase())
+          );
+          if (missingDefaults.length > 0) {
+            const mergedCats = [...cloudCats, ...missingDefaults];
+            mergedCats.sort((a, b) => {
+              if (a.id === 'all') return -1;
+              if (b.id === 'all') return 1;
+              return (a.order ?? 0) - (b.order ?? 0);
+            });
+            setCategoriesList(mergedCats);
+            missingDefaults.forEach((cat) => {
+              saveCategoryToCloud(cat).catch((err) =>
+                console.warn(`Failed to auto-sync category ${cat.id} to cloud:`, err)
+              );
+            });
+          } else {
+            setCategoriesList(cloudCats);
+          }
         } else if (cloudCats === null) {
           seedCategoriesToCloud(DEFAULT_CATEGORIES).catch((err) => {
             console.warn('Auto-seed categories to Firestore failed:', err);
@@ -87,10 +113,11 @@ export const useCatalog = () => {
       const saved = localStorage.getItem(APP_CONFIG.storageKeys.products);
       if (saved) {
         const parsed = JSON.parse(saved);
-        const existingIds = new Set(parsed.map((p) => p.id));
-        const missingDefaults = PRODUCTS.filter((p) => !existingIds.has(p.id));
+        const existingIds = new Set(parsed.map((p) => String(p.id)));
+        const missingDefaults = PRODUCTS.filter((p) => !existingIds.has(String(p.id)));
         if (missingDefaults.length > 0) {
           const merged = [...parsed, ...missingDefaults];
+          merged.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
           localStorage.setItem(APP_CONFIG.storageKeys.products, JSON.stringify(merged));
           return merged;
         }
@@ -118,7 +145,23 @@ export const useCatalog = () => {
     const unsubscribe = subscribeToCloudProducts(
       (cloudProducts) => {
         if (cloudProducts && cloudProducts.length > 0) {
-          setProductsList(cloudProducts);
+          // Normalize IDs to string for reliable lookup
+          const existingCloudIds = new Set(cloudProducts.map((p) => String(p.id)));
+          const missingDefaults = PRODUCTS.filter((p) => !existingCloudIds.has(String(p.id)));
+
+          if (missingDefaults.length > 0) {
+            const merged = [...cloudProducts, ...missingDefaults];
+            merged.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+            setProductsList(merged);
+            // Auto-persist missing products to Firestore so cloud database stays complete
+            missingDefaults.forEach((item) => {
+              saveProductToCloud(item).catch((err) => {
+                console.warn(`Failed to auto-sync missing product ${item.id} to cloud:`, err);
+              });
+            });
+          } else {
+            setProductsList(cloudProducts);
+          }
         } else if (cloudProducts === null) {
           seedProductsToCloud(PRODUCTS).catch((err) => {
             console.warn('Auto-seed to Firestore failed (check Firestore rules):', err);

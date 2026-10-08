@@ -6,8 +6,9 @@
 export const APP_CONFIG = {
   name: 'Beliyuk Jajan',
   brandFullName: 'Beliyuk Roti Bakar',
-  tagline: 'Nikmati gurihnya roti berpadu manisnya cokelat 🍞',
-  subtitle: 'Roti bakar empuk dengan isian tebal melimpah. Dapat dimix sesuai request!',
+  tagline: 'Roti Bakar Gurih, Es Segar & Healthy Food Bergizi 🍞🥗',
+  subtitle:
+    'Pilihan lengkap roti bakar empuk tebal, minuman segar, serta sandwich gandum & healthy meal box siap antar di Sangatta.',
   instagram: 'Beliyuk_eskekiniansegerr',
   currency: 'IDR',
   locale: 'id-ID',
@@ -25,7 +26,7 @@ export const APP_CONFIG = {
   storageKeys: {
     cart: 'beliyuk_cart_v1',
     orders: 'beliyuk_orders_v2', // bumped to v2 to purge legacy mock demo order
-    products: 'beliyuk_products_v4', // bumped to v4 for healthy food sandwich & meal box rollout
+    products: 'beliyuk_products_v5', // bumped to v5 for healthy food sandwich & meal box auto-sync rollout
     settings: 'beliyuk_settings_v3',
     promos: 'beliyuk_promos_v1',
     categories: 'beliyuk_categories_v1',

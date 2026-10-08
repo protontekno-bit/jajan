@@ -17,14 +17,14 @@ export const HeroSection = ({ searchQuery, onSearchChange }) => {
 
       <div className="relative z-10 sm:w-7/12">
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-orange-50 text-[#FF7A00] mb-2 border border-orange-200/60">
-          🍞 Roti Bakar Bandung & Es Segar
+          🍞 Roti Bakar, Minuman Segar &amp; Healthy Food 🥗
         </span>
         <h2 className="text-xl sm:text-2xl md:text-3xl font-black mb-1.5 leading-snug text-gray-800">
-          Mau Nyemil Enak? <br className="hidden sm:inline" />
-          <span className="text-[#FF7A00]">Beliyuk Roti Bakar! 🥪</span>
+          Mau Nyemil Enak &amp; Sehat? <br className="hidden sm:inline" />
+          <span className="text-[#FF7A00]">Beliyuk Jajan! 🥪🥗</span>
         </h2>
         <p className="text-gray-500 mb-3 sm:mb-5 font-medium text-xs sm:text-sm leading-relaxed max-w-lg mx-auto sm:mx-0">
-          Roti bakar empuk gurih dengan isian tebal melimpah. Bisa dimix sesuai request!
+          Roti bakar empuk gurih, aneka es segar, hingga sandwich gandum &amp; bento meal box bergizi. Siap diantar ke lokasimu!
         </p>
 
         {/* Search Bar */}
@@ -37,7 +37,7 @@ export const HeroSection = ({ searchQuery, onSearchChange }) => {
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full pl-10 pr-9 py-2.5 sm:py-3 rounded-full bg-[#F3F4F6] border border-transparent focus:border-[#FF7A00] focus:bg-white focus:outline-none focus:ring-3 focus:ring-[#FF7A00]/15 transition-all text-xs sm:text-sm font-medium placeholder-gray-400 text-gray-800"
-            placeholder="Cari Nutella, Keju, ChocoCrunch, Es Segar..."
+            placeholder="Cari Roti Bakar, Sandwich Gandum, Meal Box, Es Segar..."
           />
           {searchQuery && (
             <button
@@ -60,7 +60,11 @@ export const HeroSection = ({ searchQuery, onSearchChange }) => {
           />
           <div className="absolute -bottom-2.5 -left-2.5 bg-white/95 backdrop-blur-md px-3 py-1 rounded-xl shadow-md border border-orange-100 flex items-center gap-1.5">
             <span className="text-base font-bold text-amber-500">⭐ 4.9</span>
-            <span className="text-[11px] font-bold text-gray-700">Nutella & Chocomaltine</span>
+            <span className="text-[11px] font-bold text-gray-700">Nutella &amp; Chocomaltine</span>
+          </div>
+          <div className="absolute -top-2.5 -right-2.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-xl shadow-md border border-emerald-100 flex items-center gap-1.5">
+            <span className="text-xs">🥗</span>
+            <span className="text-[11px] font-bold text-emerald-700">Healthy Food Ready</span>
           </div>
         </div>
       </div>

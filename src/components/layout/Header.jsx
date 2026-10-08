@@ -43,7 +43,7 @@ export const Header = ({
             Beliyuk Jajan
           </h1>
           <p className="text-[10px] text-gray-500 font-medium tracking-wider uppercase mt-0.5">
-            Jajan Lezat & Cepat
+            Roti Bakar &amp; Healthy Food
           </p>
         </div>
       </div>
