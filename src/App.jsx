@@ -131,6 +131,8 @@ export default function App() {
     syncLocalToCloud,
     isCloudActive,
     resetProductsToDefault,
+    toggleProductActive,
+    moveProduct,
     addCategory,
     updateCategory,
     deleteCategory,
@@ -232,6 +234,8 @@ export default function App() {
             <AdminDashboard
               products={allProducts}
               onToggleAvailability={toggleAvailability}
+              onToggleProductActive={toggleProductActive}
+              onMoveProduct={moveProduct}
               onUpdateProduct={updateProduct}
               onAddProduct={addProduct}
               onDeleteProduct={deleteProduct}

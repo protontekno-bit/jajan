@@ -8,6 +8,10 @@ import {
   RotateCcw,
   MessageCircle,
   Eye,
+  EyeOff,
+  ChevronUp,
+  ChevronDown,
+  X,
   Link as LinkIcon,
   Copy,
   Lock,
@@ -30,10 +34,10 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { formatRupiah } from '../../utils/currency.js';
-import { ProductImageUploader } from './ProductImageUploader.jsx';
 import { AdminPromoManager } from './AdminPromoManager.jsx';
 import { AdminCategoryManager } from './AdminCategoryManager.jsx';
 import { AdminHeroSlideManager } from './AdminHeroSlideManager.jsx';
+import { AdminProductModal } from './AdminProductModal.jsx';
 import {
   saveFirebaseConfig,
   getStoredFirebaseConfig,
@@ -61,6 +65,8 @@ import { APP_CONFIG } from '../../config/constants.js';
 export const AdminDashboard = ({
   products = [],
   onToggleAvailability,
+  onToggleProductActive,
+  onMoveProduct,
   onUpdateProduct,
   onAddProduct,
   onDeleteProduct,
@@ -99,6 +105,9 @@ export const AdminDashboard = ({
 }) => {
   const [activeTab, setActiveTab] = useState('orders'); // default to 'orders' to monitor incoming transactions
   const [searchMenu, setSearchMenu] = useState('');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('all'); // 'all' | 'ready' | 'empty' | 'active' | 'hidden'
+  const [menuToast, setMenuToast] = useState(null);
   const [editingPriceId, setEditingPriceId] = useState(null);
   const [newPriceValue, setNewPriceValue] = useState('');
 
@@ -208,15 +217,8 @@ export const AdminDashboard = ({
   const [savedNotice, setSavedNotice] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // New Product Modal State
+  // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newProductForm, setNewProductForm] = useState({
-    name: '',
-    category: 'roti_bakar',
-    price: 30000,
-    img: 'https://images.unsplash.com/photo-1584776296944-ab6fb57b0bdd?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
-    description: '',
-  });
 
   const adminUrl = `${window.location.origin}/admin`;
 
@@ -244,17 +246,6 @@ export const AdminDashboard = ({
       onUpdateProduct({ ...product, price: parsed });
     }
     setEditingPriceId(null);
-  };
-
-  const handleSaveFullEdit = (e) => {
-    e.preventDefault();
-    if (!editingProduct || !editingProduct.name.trim()) return;
-
-    onUpdateProduct({
-      ...editingProduct,
-      price: Number(editingProduct.price),
-    });
-    setEditingProduct(null);
   };
 
   const handleDeleteProduct = (product) => {
@@ -308,28 +299,24 @@ export const AdminDashboard = ({
     }
   };
 
-  const handleCreateProduct = (e) => {
-    e.preventDefault();
-    if (!newProductForm.name.trim()) return;
+  const filtered = products.filter((p) => {
+    const matchesSearch =
+      !searchMenu.trim() ||
+      p.name.toLowerCase().includes(searchMenu.toLowerCase()) ||
+      (p.description && p.description.toLowerCase().includes(searchMenu.toLowerCase()));
 
-    onAddProduct({
-      ...newProductForm,
-      price: Number(newProductForm.price),
-    });
+    const matchesCategory =
+      selectedCategoryFilter === 'all' ||
+      p.category.toLowerCase() === selectedCategoryFilter.toLowerCase();
 
-    setIsAddModalOpen(false);
-    setNewProductForm({
-      name: '',
-      category: 'roti_bakar',
-      price: 30000,
-      img: 'https://images.unsplash.com/photo-1584776296944-ab6fb57b0bdd?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
-      description: '',
-    });
-  };
+    let matchesStatus = true;
+    if (selectedStatusFilter === 'ready') matchesStatus = p.isAvailable !== false;
+    else if (selectedStatusFilter === 'empty') matchesStatus = p.isAvailable === false;
+    else if (selectedStatusFilter === 'active') matchesStatus = p.isActive !== false;
+    else if (selectedStatusFilter === 'hidden') matchesStatus = p.isActive === false;
 
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(searchMenu.toLowerCase())
-  );
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
 
   return (
     <div className="py-4 animate-in fade-in duration-200">
@@ -883,31 +870,124 @@ export const AdminDashboard = ({
             onReorderCategoryToPosition={onReorderCategoryToPosition}
           />
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <input
-              type="text"
-              value={searchMenu}
-              onChange={(e) => setSearchMenu(e.target.value)}
-              placeholder="Cari menu untuk diubah stok/harga..."
-              className="px-4 py-2.5 rounded-full bg-white border border-gray-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#FF7A00] flex-1 max-w-sm"
-            />
-
-            <div className="flex items-center gap-2">
+          {/* Toast Notifikasi Feedback Menu */}
+          {menuToast && (
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center justify-between shadow-xs animate-in fade-in">
+              <span>{menuToast}</span>
               <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="px-4 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm btn-bounce cursor-pointer"
+                type="button"
+                onClick={() => setMenuToast(null)}
+                className="text-emerald-500 hover:text-emerald-700 text-base font-bold cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
+                &times;
+              </button>
+            </div>
+          )}
+
+          {/* Filter Kategori Menu Pill Buttons */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            <button
+              type="button"
+              onClick={() => setSelectedCategoryFilter('all')}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                selectedCategoryFilter === 'all'
+                  ? 'bg-gray-800 text-white shadow-xs font-extrabold'
+                  : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+              }`}
+            >
+              Semua Menu ({products.length})
+            </button>
+            {categories
+              .filter((c) => c.id !== 'all')
+              .map((c) => {
+                const count = products.filter((p) => p.category === c.id).length;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setSelectedCategoryFilter(c.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap flex items-center gap-1 transition-all cursor-pointer ${
+                      selectedCategoryFilter === c.id
+                        ? 'bg-[#FF7A00] text-white shadow-xs font-extrabold'
+                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    <span>{c.icon}</span>
+                    <span>{c.name}</span>
+                    <span className="text-[10px] opacity-80 font-mono">({count})</span>
+                  </button>
+                );
+              })}
+          </div>
+
+          {/* Filter Status & Search & Action Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 sm:w-64">
+                <input
+                  type="text"
+                  value={searchMenu}
+                  onChange={(e) => setSearchMenu(e.target.value)}
+                  placeholder="Cari nama menu / deskripsi..."
+                  className="w-full pl-3.5 pr-8 py-2 rounded-full bg-white border border-gray-200 text-xs font-medium focus:outline-none focus:border-[#FF7A00]"
+                />
+                {searchMenu && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchMenu('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Status Filter Buttons */}
+              <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-xl">
+                {[
+                  { id: 'all', label: 'Semua' },
+                  { id: 'ready', label: '🟢 Ready' },
+                  { id: 'empty', label: '🔴 Habis' },
+                  { id: 'active', label: '👁️ Tampil' },
+                  { id: 'hidden', label: '🔒 Sembunyi' },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setSelectedStatusFilter(st.id)}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      selectedStatusFilter === st.id
+                        ? 'bg-white text-[#FF7A00] shadow-2xs font-black'
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingProduct(null);
+                  setIsAddModalOpen(true);
+                }}
+                className="px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-sm btn-bounce cursor-pointer"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
                 <span>Tambah Menu Baru</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   if (confirm('Kembalikan semua menu ke setelan default?')) {
                     onResetProducts();
                   }
                 }}
-                className="p-2.5 rounded-full bg-white text-gray-400 hover:text-gray-700 border border-gray-200 transition-colors btn-bounce cursor-pointer"
+                className="p-2 rounded-full bg-white text-gray-400 hover:text-gray-700 border border-gray-200 transition-colors btn-bounce cursor-pointer"
                 title="Reset Menu ke Awal"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -916,127 +996,222 @@ export const AdminDashboard = ({
           </div>
 
           {/* Product Items Table / Cards */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-xs divide-y divide-gray-100 overflow-hidden">
-            {filtered.map((product) => {
-              const isAvailable = product.isAvailable !== false;
-              const hasVariants = product.variants && product.variants.length > 0;
+          {filtered.length === 0 ? (
+            <div className="p-8 text-center bg-white rounded-3xl border border-gray-100 shadow-xs space-y-2">
+              <p className="text-gray-500 text-xs font-bold">
+                Tidak ada menu yang sesuai dengan filter atau kata kunci "{searchMenu}".
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchMenu('');
+                  setSelectedCategoryFilter('all');
+                  setSelectedStatusFilter('all');
+                }}
+                className="text-xs font-bold text-[#FF7A00] hover:underline cursor-pointer"
+              >
+                Reset Semua Filter
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-xs divide-y divide-gray-100 overflow-hidden">
+              {filtered.map((product, pIdx) => {
+                const isAvailable = product.isAvailable !== false;
+                const isVisible = product.isActive !== false;
+                const hasVariants = product.variants && product.variants.length > 0;
+                const categoryObj = categories.find((c) => c.id === product.category);
 
-              return (
-                <div
-                  key={product.id}
-                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-orange-50/20 transition-colors"
-                >
-                  <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                    <img
-                      src={product.img}
-                      alt={product.name}
-                      className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-2xl flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-extrabold text-sm sm:text-base text-gray-800 truncate">
-                          {product.name}
-                        </h4>
-                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                          {product.category}
+                return (
+                  <div
+                    key={product.id}
+                    className={`p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 hover:bg-orange-50/20 transition-colors ${
+                      !isVisible ? 'bg-gray-50/70 opacity-80' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {/* Order Position Up/Down Controls */}
+                      <div className="flex flex-col items-center justify-center gap-0.5 pr-1.5 border-r border-gray-100 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => onMoveProduct && onMoveProduct(product.id, 'up')}
+                          disabled={pIdx === 0}
+                          className="p-0.5 rounded text-gray-400 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-20 cursor-pointer"
+                          title="Geser menu naik"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="text-[10px] font-black font-mono text-gray-400">
+                          #{pIdx + 1}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => onMoveProduct && onMoveProduct(product.id, 'down')}
+                          disabled={pIdx === filtered.length - 1}
+                          className="p-0.5 rounded text-gray-400 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-20 cursor-pointer"
+                          title="Geser menu turun"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
                       </div>
 
-                      {/* Variants summary */}
-                      {hasVariants ? (
-                        <p className="text-[11px] text-orange-600 font-semibold mt-0.5">
-                          ✓ Memiliki {product.variants.length} grup varian (
-                          {product.variants.map((v) => v.name).join(', ')})
-                        </p>
-                      ) : (
-                        <p className="text-[11px] text-gray-400 mt-0.5">Tanpa varian tambahan</p>
-                      )}
+                      <img
+                        src={product.img}
+                        alt={product.name}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1584776296944-ab6fb57b0bdd?w=500';
+                        }}
+                        className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-2xl flex-shrink-0 border border-gray-100"
+                      />
 
-                      {/* Price editor */}
-                      <div className="mt-1 flex items-center gap-2">
-                        {editingPriceId === product.id ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-gray-500">Rp</span>
-                            <input
-                              type="number"
-                              value={newPriceValue}
-                              onChange={(e) => setNewPriceValue(e.target.value)}
-                              className="w-24 px-2 py-1 rounded-lg border border-[#FF7A00] text-xs font-bold"
-                              autoFocus
-                            />
-                            <button
-                              onClick={() => handleSavePrice(product)}
-                              className="p-1 rounded bg-[#FF7A00] text-white text-xs font-bold cursor-pointer"
-                            >
-                              Simpan
-                            </button>
-                            <button
-                              onClick={() => setEditingPriceId(null)}
-                              className="p-1 text-xs text-gray-400 cursor-pointer"
-                            >
-                              Batal
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-black text-sm text-[#FF7A00]">
-                              {formatRupiah(product.price)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="font-extrabold text-sm sm:text-base text-gray-800 truncate">
+                            {product.name}
+                          </h4>
+
+                          {/* Highlight Badge */}
+                          {product.badge && (
+                            <span className="text-[10px] font-black px-2 py-0.2 rounded-full bg-orange-100 text-[#FF7A00]">
+                              {product.badge}
                             </span>
-                            <button
-                              onClick={() => handleStartEditPrice(product)}
-                              className="p-1 text-gray-300 hover:text-gray-600 cursor-pointer"
-                              title="Ubah harga"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          )}
+
+                          {/* Category Badge */}
+                          <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-gray-100 text-gray-600">
+                            {categoryObj ? `${categoryObj.icon} ${categoryObj.name}` : product.category}
+                          </span>
+
+                          {/* Visibility Status Badge */}
+                          <span
+                            className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded-md ${
+                              isVisible
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-gray-200 text-gray-600'
+                            }`}
+                          >
+                            {isVisible ? '👁️ Tampil' : '🔒 Sembunyi'}
+                          </span>
+                        </div>
+
+                        {/* Variants summary */}
+                        {hasVariants ? (
+                          <p className="text-[11px] text-orange-600 font-bold mt-0.5 flex items-center gap-1">
+                            <SlidersHorizontal className="w-3 h-3" />
+                            <span>
+                              {product.variants.length} grup varian (
+                              {product.variants.map((v) => v.name).join(', ')})
+                            </span>
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-gray-400 mt-0.5">Tanpa varian tambahan</p>
                         )}
+
+                        {/* Price & Original Price with Inline Quick Editor */}
+                        <div className="mt-1 flex items-center gap-2">
+                          {editingPriceId === product.id ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-gray-500">Rp</span>
+                              <input
+                                type="number"
+                                value={newPriceValue}
+                                onChange={(e) => setNewPriceValue(e.target.value)}
+                                className="w-24 px-2 py-1 rounded-lg border border-[#FF7A00] text-xs font-bold"
+                                autoFocus
+                              />
+                              <button
+                                onClick={() => handleSavePrice(product)}
+                                className="p-1 rounded bg-[#FF7A00] text-white text-xs font-bold cursor-pointer"
+                              >
+                                Simpan
+                              </button>
+                              <button
+                                onClick={() => setEditingPriceId(null)}
+                                className="p-1 text-xs text-gray-400 cursor-pointer"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-black text-sm text-[#FF7A00]">
+                                {formatRupiah(product.price)}
+                              </span>
+                              {product.originalPrice && Number(product.originalPrice) > Number(product.price) && (
+                                <span className="text-[11px] text-gray-400 line-through font-semibold">
+                                  {formatRupiah(Number(product.originalPrice))}
+                                </span>
+                              )}
+                              <button
+                                onClick={() => handleStartEditPrice(product)}
+                                className="p-1 text-gray-300 hover:text-gray-600 cursor-pointer"
+                                title="Ubah harga cepat"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    {/* Stock Availability Toggle Switch & Action Buttons */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-0 border-gray-100 flex-wrap">
+                      {/* Stock Ready / Habis */}
+                      <button
+                        type="button"
+                        onClick={() => onToggleAvailability(product.id)}
+                        className={`px-3 py-1.5 rounded-full font-bold text-xs transition-all cursor-pointer ${
+                          isAvailable
+                            ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                        }`}
+                        title={isAvailable ? 'Tandai menu habis stok' : 'Tandai menu kembali tersedia'}
+                      >
+                        {isAvailable ? 'Tandai Habis' : 'Tandai Ready'}
+                      </button>
+
+                      {/* Visibility Toggle (Tampil / Sembunyi) */}
+                      <button
+                        type="button"
+                        onClick={() => onToggleProductActive && onToggleProductActive(product.id)}
+                        className={`px-2.5 py-1.5 rounded-full font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
+                          isVisible
+                            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            : 'bg-orange-50 text-[#FF7A00] border border-orange-200'
+                        }`}
+                        title={isVisible ? 'Sembunyikan menu dari katalog pembeli' : 'Tampilkan menu di katalog pembeli'}
+                      >
+                        {isVisible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        <span>{isVisible ? 'Sembunyikan' : 'Tampilkan'}</span>
+                      </button>
+
+                      {/* Full Edit Modal Trigger */}
+                      <button
+                        type="button"
+                        onClick={() => setEditingProduct({ ...product })}
+                        className="px-3.5 py-1.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                        title="Edit Nama, Harga, Varian, Foto & Deskripsi Lengkap"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>Edit Detail</span>
+                      </button>
+
+                      {/* Delete Menu */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteProduct(product)}
+                        className="p-1.5 rounded-full bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-600 border border-gray-200 transition-colors cursor-pointer"
+                        title="Hapus Menu dari Katalog"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-
-                  {/* Stock Availability Toggle Switch & Action Buttons */}
-                  <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-0 border-gray-100 flex-wrap">
-                    <span
-                      className={`text-xs font-extrabold ${
-                        isAvailable ? 'text-emerald-600' : 'text-red-500'
-                      }`}
-                    >
-                      {isAvailable ? '🟢 Ready' : '🔴 Habis'}
-                    </span>
-
-                    <button
-                      onClick={() => onToggleAvailability(product.id)}
-                      className={`px-3 py-1.5 rounded-full font-bold text-xs transition-all cursor-pointer ${
-                        isAvailable
-                          ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
-                          : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                      }`}
-                    >
-                      {isAvailable ? 'Tandai Habis' : 'Tandai Ready'}
-                    </button>
-
-                    <button
-                      onClick={() => setEditingProduct({ ...product })}
-                      className="px-3 py-1.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
-                      title="Edit Nama, Harga, Foto & Deskripsi Lengkap"
-                    >
-                      <Edit2 className="w-3 h-3" />
-                      <span>Edit Detail</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleDeleteProduct(product)}
-                      className="p-1.5 rounded-full bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-600 border border-gray-200 transition-colors cursor-pointer"
-                      title="Hapus Menu dari Katalog"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -1438,217 +1613,27 @@ Mohon dicek dan info nomor rekening / QRIS pembayaran ya, Admin. Terima kasih! �
         />
       )}
 
-      {/* Modal Tambah Menu Baru */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-xs"
-            onClick={() => setIsAddModalOpen(false)}
-          />
-          <form
-            onSubmit={handleCreateProduct}
-            className="relative bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl z-10 space-y-4 animate-in zoom-in-95"
-          >
-            <h3 className="font-extrabold text-lg text-gray-800">Tambah Menu Baru</h3>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-gray-700 block mb-1">Nama Menu Makanan/Minuman</label>
-                <input
-                  type="text"
-                  value={newProductForm.name}
-                  onChange={(e) =>
-                    setNewProductForm({ ...newProductForm, name: e.target.value })
-                  }
-                  placeholder="Contoh: Ayam Geprek Sambal Matah"
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">Kategori</label>
-                  <select
-                    value={newProductForm.category}
-                    onChange={(e) =>
-                      setNewProductForm({ ...newProductForm, category: e.target.value })
-                    }
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 font-semibold"
-                  >
-                    {categories
-                      .filter((c) => c.id !== 'all')
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.icon} {c.name}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">Harga (IDR)</label>
-                  <input
-                    type="number"
-                    value={newProductForm.price}
-                    onChange={(e) =>
-                      setNewProductForm({ ...newProductForm, price: e.target.value })
-                    }
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 font-bold"
-                    required
-                  />
-                </div>
-              </div>
-
-              <ProductImageUploader
-                value={newProductForm.img}
-                onChange={(newImg) =>
-                  setNewProductForm({ ...newProductForm, img: newImg })
-                }
-              />
-
-              <div>
-                <label className="font-bold text-gray-700 block mb-1">Deskripsi Singkat</label>
-                <textarea
-                  rows={2}
-                  value={newProductForm.description}
-                  onChange={(e) =>
-                    setNewProductForm({ ...newProductForm, description: e.target.value })
-                  }
-                  placeholder="Bahan utama, rasa, atau keunikan menu"
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 resize-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsAddModalOpen(false)}
-                className="flex-1 py-2.5 rounded-full bg-gray-100 text-gray-600 font-bold text-xs cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                className="flex-1 py-2.5 rounded-full bg-[#FF7A00] text-white font-bold text-xs shadow-sm cursor-pointer"
-              >
-                Simpan Menu
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Modal Edit Menu Lengkap (Manual Kontrol Admin) */}
-      {editingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-xs"
-            onClick={() => setEditingProduct(null)}
-          />
-          <form
-            onSubmit={handleSaveFullEdit}
-            className="relative bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl z-10 space-y-4 animate-in zoom-in-95"
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-lg text-gray-800">Edit Detail Menu</h3>
-              <button
-                type="button"
-                onClick={() => setEditingProduct(null)}
-                className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-pointer"
-              >
-                &times;
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-gray-700 block mb-1">Nama Menu</label>
-                <input
-                  type="text"
-                  value={editingProduct.name}
-                  onChange={(e) =>
-                    setEditingProduct({ ...editingProduct, name: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 font-semibold"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">Kategori</label>
-                  <select
-                    value={editingProduct.category}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, category: e.target.value })
-                    }
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 font-semibold"
-                  >
-                    {categories
-                      .filter((c) => c.id !== 'all')
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.icon} {c.name}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">Harga (IDR)</label>
-                  <input
-                    type="number"
-                    value={editingProduct.price}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, price: e.target.value })
-                    }
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 font-bold"
-                    required
-                  />
-                </div>
-              </div>
-
-              <ProductImageUploader
-                value={editingProduct.img}
-                onChange={(newImg) =>
-                  setEditingProduct({ ...editingProduct, img: newImg })
-                }
-              />
-
-              <div>
-                <label className="font-bold text-gray-700 block mb-1">Deskripsi Menu</label>
-                <textarea
-                  rows={2}
-                  value={editingProduct.description || ''}
-                  onChange={(e) =>
-                    setEditingProduct({ ...editingProduct, description: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 resize-none"
-                  placeholder="Keterangan rasa, isian, atau bahan"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setEditingProduct(null)}
-                className="flex-1 py-2.5 rounded-full bg-gray-100 text-gray-600 font-bold text-xs cursor-pointer hover:bg-gray-200 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                className="flex-1 py-2.5 rounded-full bg-[#FF7A00] text-white font-bold text-xs shadow-sm cursor-pointer hover:bg-orange-600 transition-colors"
-              >
-                Simpan Perubahan
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      {/* Modal Tambah & Edit Menu Lengkap (Kontrol Penuh Admin dengan Varian, Topping, Diskon & Status) */}
+      <AdminProductModal
+        key={editingProduct ? editingProduct.id : (isAddModalOpen ? 'add-modal' : 'none')}
+        isOpen={isAddModalOpen || Boolean(editingProduct)}
+        product={editingProduct}
+        categories={categories}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingProduct(null);
+        }}
+        onSave={async (savedProduct) => {
+          if (editingProduct) {
+            await onUpdateProduct(savedProduct);
+            setMenuToast(`✅ Menu "${savedProduct.name}" berhasil diperbarui dan disinkronkan ke Cloud!`);
+          } else {
+            await onAddProduct(savedProduct);
+            setMenuToast(`✅ Menu baru "${savedProduct.name}" berhasil ditambahkan ke katalog!`);
+          }
+          setTimeout(() => setMenuToast(null), 3500);
+        }}
+      />
     </div>
   );
 };

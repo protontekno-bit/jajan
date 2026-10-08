@@ -65,10 +65,17 @@ export const ProductCard = ({
           }`}
         />
 
+        {/* Custom Highlight Badge from Admin */}
+        {product.badge && (
+          <div className="absolute top-2 left-2 bg-gradient-to-r from-[#FF7A00] to-[#FFC107] text-white font-black text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full shadow-sm z-10 flex items-center gap-1">
+            <span>{product.badge}</span>
+          </div>
+        )}
+
         {/* Rating Badge */}
-        <div className="absolute top-2 left-2 bg-white/95 backdrop-blur-md px-2 py-0.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-bold flex items-center gap-1 shadow-xs border border-gray-100/50">
+        <div className={`absolute ${product.badge ? 'top-7 sm:top-8 left-2' : 'top-2 left-2'} bg-white/95 backdrop-blur-md px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold flex items-center gap-1 shadow-xs border border-gray-100/50 transition-all`}>
           <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-[#FFC107] text-[#FFC107]" />
-          <span className="text-gray-800">{product.rating}</span>
+          <span className="text-gray-800">{product.rating || 4.9}</span>
         </div>
 
         {/* Out of Stock Overlay Badge */}
@@ -84,8 +91,8 @@ export const ProductCard = ({
         <button
           onClick={handleAskReady}
           title="Tanya ketersediaan menu ini via WhatsApp"
-          className="absolute top-2 right-2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-md hover:scale-110 transition-transform btn-bounce cursor-pointer z-10"
           aria-label="Tanya ketersediaan ke WhatsApp"
+          className="absolute top-2 right-2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-md hover:scale-110 transition-transform btn-bounce cursor-pointer z-10"
         >
           <MessageCircle className="w-4 h-4 fill-white text-[#25D366]" />
         </button>
@@ -121,9 +128,16 @@ export const ProductCard = ({
             <span className="text-[9px] sm:text-[10px] text-gray-400 font-semibold block uppercase">
               Harga
             </span>
-            <span className="font-extrabold text-[#FF7A00] text-xs sm:text-sm md:text-base truncate block">
-              {formatRupiah(product.price)}
-            </span>
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="font-extrabold text-[#FF7A00] text-xs sm:text-sm md:text-base truncate block">
+                {formatRupiah(product.price)}
+              </span>
+              {product.originalPrice && Number(product.originalPrice) > Number(product.price) && (
+                <span className="text-[10px] sm:text-xs text-gray-400 line-through font-semibold">
+                  {formatRupiah(Number(product.originalPrice))}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Stepper or Add Button */}

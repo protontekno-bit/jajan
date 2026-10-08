@@ -22,7 +22,7 @@ import { compressImageFile } from '../../utils/imageCompressor.js';
  * @param {string} props.value - Current image URL or base64
  * @param {(newUrl: string) => void} props.onChange - Callback when image changes
  */
-export const ProductImageUploader = ({ value = '', onChange }) => {
+export const ProductImageUploader = ({ value = '', onChange, label = 'Foto Menu Produk' }) => {
   const [activeMode, setActiveMode] = useState('upload'); // 'upload' | 'url'
   const [isDragging, setIsDragging] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
@@ -79,7 +79,7 @@ export const ProductImageUploader = ({ value = '', onChange }) => {
     <div className="space-y-2.5">
       <div className="flex items-center justify-between">
         <label className="font-bold text-gray-700 text-xs block">
-          Foto Menu Roti Bakar
+          {label}
         </label>
         <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg text-[10px] font-bold">
           <button

@@ -117,15 +117,20 @@ export const useCatalog = () => {
         const missingDefaults = PRODUCTS.filter((p) => !existingIds.has(String(p.id)));
         if (missingDefaults.length > 0) {
           const merged = [...parsed, ...missingDefaults];
-          merged.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+          merged.sort((a, b) => {
+            if (a.order !== undefined && b.order !== undefined) {
+              return (a.order ?? 0) - (b.order ?? 0);
+            }
+            return (Number(a.id) || 0) - (Number(b.id) || 0);
+          });
           localStorage.setItem(APP_CONFIG.storageKeys.products, JSON.stringify(merged));
           return merged;
         }
         return parsed;
       }
-      return PRODUCTS;
+      return PRODUCTS.map((p, idx) => ({ ...p, order: p.order ?? idx }));
     } catch {
-      return PRODUCTS;
+      return PRODUCTS.map((p, idx) => ({ ...p, order: p.order ?? idx }));
     }
   });
 
@@ -151,11 +156,16 @@ export const useCatalog = () => {
 
           if (missingDefaults.length > 0) {
             const merged = [...cloudProducts, ...missingDefaults];
-            merged.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+            merged.sort((a, b) => {
+              if (a.order !== undefined && b.order !== undefined) {
+                return (a.order ?? 0) - (b.order ?? 0);
+              }
+              return (Number(a.id) || 0) - (Number(b.id) || 0);
+            });
             setProductsList(merged);
             // Auto-persist missing products to Firestore so cloud database stays complete
-            missingDefaults.forEach((item) => {
-              saveProductToCloud(item).catch((err) => {
+            missingDefaults.forEach((item, idx) => {
+              saveProductToCloud({ ...item, order: item.order ?? (cloudProducts.length + idx) }).catch((err) => {
                 console.warn(`Failed to auto-sync missing product ${item.id} to cloud:`, err);
               });
             });
@@ -181,39 +191,119 @@ export const useCatalog = () => {
   // Admin action: Toggle ready / out of stock
   const toggleAvailability = useCallback((productId) => {
     setProductsList((prev) => {
+      let updatedProd = null;
       const updated = prev.map((p) => {
         if (p.id === productId) {
           const nextVal = !p.isAvailable;
-          if (isFirebaseConfigured()) {
-            updateCloudAvailability(productId, nextVal).catch(console.error);
-          }
-          return { ...p, isAvailable: nextVal };
+          updatedProd = { ...p, isAvailable: nextVal };
+          return updatedProd;
         }
         return p;
       });
+      if (isFirebaseConfigured() && updatedProd) {
+        updateCloudAvailability(productId, updatedProd.isAvailable).catch(console.error);
+      }
       return updated;
     });
   }, []);
 
-  // Admin action: Update existing product
+  // Admin action: Toggle product visibility in customer catalog (Tampilkan / Sembunyikan)
+  const toggleProductActive = useCallback((productId) => {
+    setProductsList((prev) => {
+      let updatedProd = null;
+      const updated = prev.map((p) => {
+        if (p.id === productId) {
+          const nextVal = p.isActive === false;
+          updatedProd = { ...p, isActive: nextVal };
+          return updatedProd;
+        }
+        return p;
+      });
+      if (isFirebaseConfigured() && updatedProd) {
+        saveProductToCloud(updatedProd).catch(console.error);
+      }
+      return updated;
+    });
+  }, []);
+
+  // Admin action: Move product position up or down in catalog
+  const moveProduct = useCallback(
+    async (productId, direction) => {
+      const idx = productsList.findIndex((p) => p.id === productId);
+      if (idx === -1) return productsList;
+
+      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= productsList.length) return productsList;
+
+      const updated = [...productsList];
+      const temp = updated[idx];
+      updated[idx] = updated[targetIdx];
+      updated[targetIdx] = temp;
+
+      const reordered = updated.map((item, i) => ({
+        ...item,
+        order: i,
+      }));
+
+      setProductsList(reordered);
+      try {
+        localStorage.setItem(APP_CONFIG.storageKeys.products, JSON.stringify(reordered));
+      } catch (err) {
+        console.warn('Failed to save reordered products to localStorage:', err);
+      }
+
+      if (isFirebaseConfigured()) {
+        try {
+          await seedProductsToCloud(reordered);
+        } catch (err) {
+          console.warn('Failed to sync reordered products to Cloud:', err);
+        }
+      }
+
+      return reordered;
+    },
+    [productsList]
+  );
+
+  // Admin action: Update existing product with full attributes
   const updateProduct = useCallback((updatedProduct) => {
+    const sanitized = {
+      ...updatedProduct,
+      price: Number(updatedProduct.price),
+      originalPrice: updatedProduct.originalPrice ? Number(updatedProduct.originalPrice) : null,
+      rating: updatedProduct.rating !== undefined ? Number(updatedProduct.rating) : 5.0,
+      isAvailable: updatedProduct.isAvailable !== false,
+      isActive: updatedProduct.isActive !== false,
+      variants: Array.isArray(updatedProduct.variants) ? updatedProduct.variants : [],
+    };
     setProductsList((prev) =>
-      prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
+      prev.map((p) => (p.id === sanitized.id ? sanitized : p))
     );
     if (isFirebaseConfigured()) {
-      saveProductToCloud(updatedProduct).catch(console.error);
+      saveProductToCloud(sanitized).catch(console.error);
     }
   }, []);
 
-  // Admin action: Add a new product
+  // Admin action: Add a new product with full attributes
   const addProduct = useCallback((newProduct) => {
     const itemToAdd = {
       ...newProduct,
-      id: Date.now(),
-      rating: 5.0,
-      isAvailable: true,
+      id: newProduct.id || Date.now(),
+      price: Number(newProduct.price) || 0,
+      originalPrice: newProduct.originalPrice ? Number(newProduct.originalPrice) : null,
+      rating: newProduct.rating !== undefined ? Number(newProduct.rating) : 5.0,
+      isAvailable: newProduct.isAvailable !== false,
+      isActive: newProduct.isActive !== false,
+      order: 0,
+      variants: Array.isArray(newProduct.variants) ? newProduct.variants : [],
     };
-    setProductsList((prev) => [itemToAdd, ...prev]);
+    setProductsList((prev) => {
+      const nextList = [
+        itemToAdd,
+        ...prev.map((item, idx) => ({ ...item, order: idx + 1 })),
+      ];
+      return nextList;
+    });
     if (isFirebaseConfigured()) {
       saveProductToCloud(itemToAdd).catch(console.error);
     }
@@ -439,6 +529,8 @@ export const useCatalog = () => {
     isCloudActive,
     // Admin product functions
     toggleAvailability,
+    toggleProductActive,
+    moveProduct,
     updateProduct,
     addProduct,
     deleteProduct,

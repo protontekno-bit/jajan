@@ -218,8 +218,13 @@ export const subscribeToCloudProducts = (onUpdate, onError) => {
           });
         });
 
-        // Sort items by original sequence or ID
-        items.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+        // Sort items by custom sequence order or numeric ID fallback
+        items.sort((a, b) => {
+          if (a.order !== undefined && b.order !== undefined) {
+            return (a.order ?? 0) - (b.order ?? 0);
+          }
+          return (Number(a.id) || 0) - (Number(b.id) || 0);
+        });
         onUpdate(items);
       },
       (error) => {
@@ -248,9 +253,9 @@ export const seedProductsToCloud = async (productsList = PRODUCTS) => {
   const batch = writeBatch(instances.db);
   const productsCol = collection(instances.db, 'products');
 
-  productsList.forEach((prod) => {
+  productsList.forEach((prod, idx) => {
     const docRef = doc(productsCol, String(prod.id));
-    batch.set(docRef, prod);
+    batch.set(docRef, { ...prod, order: prod.order ?? idx });
   });
 
   await batch.commit();

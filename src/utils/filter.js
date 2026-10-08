@@ -14,6 +14,9 @@ export const filterCatalog = (products, categoryId = 'all', searchQuery = '') =>
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
   return products.filter((product) => {
+    // Only display active products in customer catalog
+    if (product.isActive === false) return false;
+
     const matchesCategory =
       categoryId === 'all' || product.category.toLowerCase() === categoryId.toLowerCase();
 
