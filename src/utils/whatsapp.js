@@ -46,6 +46,7 @@ export const generateWhatsAppLink = ({
   discountAmount = 0,
   couponCode = '',
   grandTotal,
+  gpsMapsUrl = '',
   whatsappNumber = APP_CONFIG.whatsappNumber,
   storeName = APP_CONFIG.name,
 }) => {
@@ -89,7 +90,7 @@ Waktu: ${dateStr}
 • Nama: ${customerName}
 • No. HP: ${customerPhone}
 • Metode: ${orderType === 'delivery' ? '🛵 Antar ke Alamat (Sangatta)' : '🏬 Ambil Sendiri (Pick-up)'}
-${orderType === 'delivery' ? `• Alamat Antar: ${deliveryAddress}\n` : `• Titik Ambil Toko: ${APP_CONFIG.storeAddress}\n• Titik GPS Toko: ${APP_CONFIG.storeMapsUrl}\n`}${notes ? `• Catatan: ${notes}\n` : ''}---------------------------------------------
+${orderType === 'delivery' ? `• Alamat Antar: ${deliveryAddress}\n${gpsMapsUrl ? `• 📍 Titik GPS (Google Maps): ${gpsMapsUrl}\n` : ''}` : `• Titik Ambil Toko: ${APP_CONFIG.storeAddress}\n• Titik GPS Toko: ${APP_CONFIG.storeMapsUrl}\n`}${notes ? `• Catatan: ${notes}\n` : ''}---------------------------------------------
 *RINCIAN MENU & VARIAN:*
 ${itemsList}
 

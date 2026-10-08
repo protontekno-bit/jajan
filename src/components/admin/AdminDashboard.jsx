@@ -729,6 +729,19 @@ export const AdminDashboard = ({
                               📍 {order.address}
                             </p>
                           )}
+                          {order.gpsCoordinates?.mapsUrl && (
+                            <div className="pt-0.5">
+                              <a
+                                href={order.gpsCoordinates.mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[10px] border border-blue-200 transition-colors"
+                              >
+                                <MapPin className="w-3 h-3 text-blue-600" />
+                                <span>Buka Titik GPS (Google Maps) &rarr;</span>
+                              </a>
+                            </div>
+                          )}
                           {order.notes && (
                             <p className="text-orange-800 bg-orange-50/70 p-2 rounded-xl text-[11px] border border-orange-100 font-medium">
                               💬 Catatan: "{order.notes}"

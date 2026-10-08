@@ -13,6 +13,9 @@ import {
   Tag,
   Check,
   AlertCircle,
+  Navigation,
+  Compass,
+  Loader2,
 } from 'lucide-react';
 import { formatRupiah } from '../../utils/currency.js';
 import { APP_CONFIG } from '../../config/constants.js';
@@ -65,6 +68,10 @@ export const CartDrawerModal = ({
   const [addressMode, setAddressMode] = useState('saved'); // 'saved' | 'different'
   const [differentAddress, setDifferentAddress] = useState('');
   const [saveAsPrimaryAddress, setSaveAsPrimaryAddress] = useState(false);
+  // GPS Geolocation Pinning State
+  const [gpsCoordinates, setGpsCoordinates] = useState(null); // { lat, lng, accuracy, mapsUrl }
+  const [isLocating, setIsLocating] = useState(false);
+  const [gpsFeedback, setGpsFeedback] = useState(null);
   const [notes, setNotes] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -105,6 +112,57 @@ export const CartDrawerModal = ({
     if (formErrors.address) {
       setFormErrors((prev) => ({ ...prev, address: null }));
     }
+  };
+
+  const handleDetectGpsLocation = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setGpsFeedback({
+        type: 'error',
+        message: 'Perangkat atau browser Anda tidak mendukung deteksi GPS otomatis.',
+      });
+      return;
+    }
+
+    setIsLocating(true);
+    setGpsFeedback(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        const accuracy = Math.round(pos.coords.accuracy);
+        const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
+
+        setGpsCoordinates({ lat, lng, accuracy, mapsUrl });
+        setIsLocating(false);
+        setGpsFeedback({
+          type: 'success',
+          message: `Titik GPS berhasil terdeteksi (Akurasi: ±${accuracy}m).`,
+        });
+      },
+      (err) => {
+        setIsLocating(false);
+        let msg = 'Gagal mendeteksi lokasi GPS.';
+        if (err.code === 1) {
+          msg = 'Izin akses lokasi ditolak di browser. Silakan tulis alamat manual.';
+        } else if (err.code === 2) {
+          msg = 'Sinyal GPS tidak ditemukan. Pastikan fitur lokasi di HP aktif.';
+        } else if (err.code === 3) {
+          msg = 'Waktu pencarian GPS habis. Silakan coba kembali.';
+        }
+        setGpsFeedback({ type: 'error', message: msg });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
+
+  const handleClearGpsLocation = () => {
+    setGpsCoordinates(null);
+    setGpsFeedback(null);
   };
 
   // Delivery Calculations
@@ -253,6 +311,7 @@ export const CartDrawerModal = ({
       discountAmount,
       couponCode: appliedCoupon ? appliedCoupon.code : '',
       grandTotal,
+      gpsMapsUrl: gpsCoordinates ? gpsCoordinates.mapsUrl : '',
     });
 
     const orderId = generateOrderTrackingId();
@@ -262,6 +321,7 @@ export const CartDrawerModal = ({
       customerPhone: displayPhone,
       orderType,
       address: sanitizedAddress,
+      gpsCoordinates: gpsCoordinates || null,
       notes: notes.trim(),
       items: cart.map((i) => ({
         id: i.id,
@@ -551,16 +611,66 @@ export const CartDrawerModal = ({
 
                 {orderType === 'delivery' ? (
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <label className="text-[11px] font-bold text-gray-700 block">
                         Alamat Pengantaran di Sangatta <span className="text-red-500">*</span>
                       </label>
-                      {hasSavedAddress && (
-                        <span className="text-[10px] text-gray-400 font-medium">
-                          {addressMode === 'saved' ? '🏠 Alamat Utama' : '📍 Lokasi Berbeda'}
-                        </span>
-                      )}
+                      <button
+                        type="button"
+                        onClick={handleDetectGpsLocation}
+                        disabled={isLocating}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer disabled:opacity-50"
+                        title="Ambil titik koordinat GPS perangkat Anda untuk akurasi kurir"
+                      >
+                        {isLocating ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin text-emerald-600" />
+                            <span>Mencari GPS...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Compass className="w-3 h-3 text-emerald-600" />
+                            <span>{gpsCoordinates ? 'Perbarui GPS' : 'Kunci Titik GPS'}</span>
+                          </>
+                        )}
+                      </button>
                     </div>
+
+                    {/* GPS Coordinates Status Badge if active */}
+                    {gpsCoordinates && (
+                      <div className="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-xs">
+                        <div className="flex items-center gap-2 truncate">
+                          <Navigation className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                          <div className="truncate">
+                            <span className="font-extrabold text-emerald-900 text-[11px] block">
+                              Titik GPS Terkunci (±{gpsCoordinates.accuracy}m)
+                            </span>
+                            <a
+                              href={gpsCoordinates.mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] text-emerald-700 hover:text-emerald-900 underline font-semibold"
+                            >
+                              Lihat di Google Maps &rarr;
+                            </a>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleClearGpsLocation}
+                          className="text-[10px] text-red-500 hover:text-red-700 font-bold ml-2 px-2 py-0.5 rounded-md hover:bg-red-50 cursor-pointer"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    )}
+
+                    {/* GPS Error Feedback if any */}
+                    {gpsFeedback && gpsFeedback.type === 'error' && (
+                      <p className="text-[10px] text-amber-700 bg-amber-50 p-2 rounded-xl border border-amber-200 font-medium">
+                        ⚠️ {gpsFeedback.message}
+                      </p>
+                    )}
 
                     {/* Quick Switch Buttons if Saved Address exists */}
                     {hasSavedAddress && (
