@@ -17,6 +17,7 @@ export const OrdersView = ({
   onBackToCatalog,
   onOpenCart,
   cartCount = 0,
+  onClearOrders,
 }) => {
   const handleFollowUpWhatsApp = (ord) => {
     const waUrl = generateWhatsAppLink({
@@ -45,6 +46,19 @@ export const OrdersView = ({
             Daftar nota pesanan yang telah dikirimkan ke WhatsApp Toko
           </p>
         </div>
+
+        {orders.length > 0 && onClearOrders && (
+          <button
+            onClick={() => {
+              if (window.confirm('Bersihkan seluruh riwayat pesanan dari perangkat ini?')) {
+                onClearOrders();
+              }
+            }}
+            className="text-xs font-bold text-gray-400 hover:text-red-600 transition-colors cursor-pointer px-3 py-1.5 rounded-full hover:bg-red-50 border border-transparent hover:border-red-100"
+          >
+            Bersihkan Riwayat
+          </button>
+        )}
       </div>
 
       {/* Cart Active Banner if any */}

@@ -8,8 +8,21 @@ import { APP_CONFIG } from '../config/constants.js';
 export const useOrders = () => {
   const [orders, setOrders] = useState(() => {
     try {
+      // 1. Purge legacy demo key from previous developer testing
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('beliyuk_orders_v1');
+      }
+
       const saved = localStorage.getItem(APP_CONFIG.storageKeys.orders);
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+
+      // Filter out any legacy mock orders like BJ-202610-01
+      return parsed.filter(
+        (o) => o && o.id !== 'BJ-202610-01' && o.customerName !== 'Siti Rahma'
+      );
     } catch {
       return [];
     }
@@ -39,8 +52,19 @@ export const useOrders = () => {
     return newOrder;
   }, []);
 
+  const clearOrders = useCallback(() => {
+    setOrders([]);
+    try {
+      localStorage.removeItem(APP_CONFIG.storageKeys.orders);
+      localStorage.removeItem('beliyuk_orders_v1');
+    } catch (e) {
+      console.warn('Failed to clear orders from storage:', e);
+    }
+  }, []);
+
   return {
     orders,
     addOrder,
+    clearOrders,
   };
 };

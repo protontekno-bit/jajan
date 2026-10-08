@@ -152,7 +152,7 @@ export default function App() {
   } = useCart();
 
   // Order Receipts Hook
-  const { orders, addOrder } = useOrders();
+  const { orders, addOrder, clearOrders } = useOrders();
 
   // Dynamic Promos & Voucher Coupons Hook
   const {
@@ -329,6 +329,7 @@ export default function App() {
             onBackToCatalog={() => setActiveTab('home')}
             onOpenCart={() => setIsCartOpen(true)}
             cartCount={totalItems}
+            onClearOrders={clearOrders}
           />
         )}
 

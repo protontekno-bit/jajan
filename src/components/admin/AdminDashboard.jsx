@@ -40,6 +40,7 @@ import {
   deleteOrderFromCloud,
   clearOrdersFromCloud,
 } from '../../services/firebase.js';
+import { APP_CONFIG } from '../../config/constants.js';
 
 /**
  * Store Owner Admin Dashboard component.
@@ -94,8 +95,14 @@ export const AdminDashboard = ({
   // Centralized Orders State (from Cloud Firestore)
   const [ordersList, setOrdersList] = useState(() => {
     try {
-      const saved = localStorage.getItem('beliyuk_orders_v1');
-      return saved ? JSON.parse(saved) : [];
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('beliyuk_orders_v1'); // Purge legacy mock storage key
+      }
+      const saved = localStorage.getItem(APP_CONFIG.storageKeys.orders);
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((o) => o && o.id !== 'BJ-202610-01' && o.customerName !== 'Siti Rahma');
     } catch {
       return [];
     }
@@ -108,7 +115,10 @@ export const AdminDashboard = ({
     const unsubscribe = subscribeToCloudOrders(
       (cloudOrders) => {
         if (cloudOrders && Array.isArray(cloudOrders)) {
-          setOrdersList(cloudOrders);
+          const authenticOnly = cloudOrders.filter(
+            (o) => o && o.id !== 'BJ-202610-01' && o.customerName !== 'Siti Rahma'
+          );
+          setOrdersList(authenticOnly);
         }
       },
       (err) => {
@@ -137,7 +147,7 @@ export const AdminDashboard = ({
     const updated = ordersList.filter((o) => o.id !== orderId);
     setOrdersList(updated);
     try {
-      localStorage.setItem('beliyuk_orders_v1', JSON.stringify(updated));
+      localStorage.setItem(APP_CONFIG.storageKeys.orders, JSON.stringify(updated));
     } catch (e) {
       console.warn('Failed to update local storage:', e);
     }
@@ -157,6 +167,7 @@ export const AdminDashboard = ({
     const idsToDelete = ordersList.map((o) => o.id);
     setOrdersList([]);
     try {
+      localStorage.removeItem(APP_CONFIG.storageKeys.orders);
       localStorage.removeItem('beliyuk_orders_v1');
     } catch (e) {
       console.warn('Failed to clear local orders:', e);
