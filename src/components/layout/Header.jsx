@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShoppingBag, Tag, Home, ReceiptText, User } from 'lucide-react';
+import { useCustomerProfile } from '../../hooks/useCustomerProfile.js';
 
 /**
  * Responsive Header component.
@@ -16,6 +17,9 @@ export const Header = ({
   cartCount = 0,
   onOpenCart,
 }) => {
+  const { profile } = useCustomerProfile();
+  const userInitial = profile?.name ? profile.name.trim().charAt(0).toUpperCase() : null;
+
   const desktopTabs = [
     { id: 'home', label: 'Beranda', icon: Home },
     { id: 'promo', label: 'Promo Spesial', icon: Tag },
@@ -82,17 +86,20 @@ export const Header = ({
           )}
         </button>
 
-        {/* Profile Avatar */}
-        <div
+        {/* Profile Avatar Button */}
+        <button
+          type="button"
           onClick={() => onChangeTab('profile')}
-          className="w-10 h-10 rounded-full bg-white shadow-xs overflow-hidden border-2 border-[#FFC107] p-0.5 cursor-pointer hover:ring-2 hover:ring-[#FF7A00] transition-all"
+          className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#FF7A00] to-[#FFC107] text-white flex items-center justify-center font-black text-sm shadow-xs border-2 border-white hover:scale-105 hover:ring-2 hover:ring-[#FF7A00] transition-all cursor-pointer select-none"
+          aria-label="Buka Profil"
+          title={profile?.name ? `Profil Pelanggan: ${profile.name}` : 'Profil Pelanggan'}
         >
-          <img
-            src="https://i.pravatar.cc/100?img=3"
-            alt="Profile Avatar"
-            className="w-full h-full object-cover rounded-full"
-          />
-        </div>
+          {userInitial ? (
+            <span>{userInitial}</span>
+          ) : (
+            <User className="w-5 h-5 text-white" />
+          )}
+        </button>
       </div>
       </div>
     </header>
