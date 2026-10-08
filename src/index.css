@@ -53,3 +53,35 @@
   padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* 3D Commercial Food Floating Keyframe Animation (Works automatically on mobile touchscreens) */
+@keyframes float3d {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) rotate(0.8deg) scale(1.03);
+  }
+}
+
+@keyframes shadowPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(0.82);
+    opacity: 0.18;
+  }
+}
+
+.animate-float-3d {
+  animation: float3d 3.6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-shadow-pulse {
+  animation: shadowPulse 3.6s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+
