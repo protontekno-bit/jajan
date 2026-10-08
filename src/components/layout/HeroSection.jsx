@@ -166,26 +166,54 @@ export const HeroSection = ({
           </div>
         </div>
 
-        {/* Right Column: Visual Image Card */}
-        <div className="mt-3 sm:mt-0 sm:w-5/12 max-w-xs mx-auto sm:mx-0 relative z-10">
+        {/* Right Column: 3D Commercial Food Stage */}
+        <div className="mt-4 sm:mt-0 sm:w-5/12 max-w-xs mx-auto sm:mx-0 relative z-10 flex flex-col items-center justify-center">
           <div
-            className="relative group cursor-pointer overflow-hidden rounded-2xl shadow-md border border-orange-100/60"
+            className="relative group cursor-pointer w-full flex flex-col items-center justify-center select-none"
             onClick={handleSlideCtaClick}
-            title="Klik untuk membuka kategori menu ini"
+            title="Klik untuk melihat menu kategori ini"
           >
-            <img
-              key={currentSlide.id}
-              src={currentSlide.img}
-              alt={currentSlide.title}
-              fetchPriority={safeIndex === 0 ? 'high' : 'auto'}
-              loading={safeIndex === 0 ? 'eager' : 'lazy'}
-              className="w-full h-40 sm:h-48 object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500 ease-out"
-            />
+            {/* 3D Radial Spotlight Glow Behind Product */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div
+                className={`w-40 sm:w-52 h-40 sm:h-52 rounded-full blur-2xl transition-all duration-700 ${
+                  currentSlide.targetCategory === 'healthy_food'
+                    ? 'bg-gradient-to-tr from-emerald-400/35 to-teal-400/20'
+                    : currentSlide.targetCategory === 'minuman'
+                      ? 'bg-gradient-to-tr from-sky-400/35 to-blue-500/20'
+                      : 'bg-gradient-to-tr from-[#FF7A00]/30 to-[#FFC107]/25'
+                }`}
+              />
+              <div
+                className={`w-32 sm:w-44 h-32 sm:h-44 rounded-full border border-white/80 shadow-inner blur-xs transition-all duration-700 ${
+                  currentSlide.targetCategory === 'healthy_food'
+                    ? 'bg-emerald-500/10 border-emerald-300/40'
+                    : currentSlide.targetCategory === 'minuman'
+                      ? 'bg-sky-500/10 border-sky-300/40'
+                      : 'bg-orange-500/10 border-orange-300/40'
+                }`}
+              />
+            </div>
 
-            {/* Floating Top/Bottom Badges */}
+            {/* 3D Floating Product Object with Dynamic Contour Drop Shadow */}
+            <div className="relative z-10 w-full flex flex-col items-center justify-center py-1">
+              <img
+                key={currentSlide.id}
+                src={currentSlide.img}
+                alt={currentSlide.title}
+                fetchPriority={safeIndex === 0 ? 'high' : 'auto'}
+                loading={safeIndex === 0 ? 'eager' : 'lazy'}
+                className="max-h-40 sm:max-h-48 w-auto max-w-[90%] object-contain drop-shadow-[0_20px_25px_rgba(0,0,0,0.22)] group-hover:scale-108 group-hover:-translate-y-2 transition-all duration-500 ease-out mix-blend-multiply"
+              />
+
+              {/* Realistic Oval Contact Shadow */}
+              <div className="w-32 sm:w-44 h-3.5 sm:h-4 bg-radial from-black/28 via-black/10 to-transparent rounded-full blur-[3px] mt-1.5 transition-all duration-500 group-hover:scale-90 group-hover:opacity-60 pointer-events-none" />
+            </div>
+
+            {/* Floating 3D Micro-Badge with Frosted Glass Elevation */}
             {currentSlide.floatingBadge && (
-              <div className="absolute bottom-2.5 left-2.5 bg-white/95 backdrop-blur-md px-3 py-1 rounded-xl shadow-md border border-orange-100 flex items-center gap-1.5 pointer-events-none">
-                <span className="text-[11px] font-bold text-gray-800">
+              <div className="absolute -bottom-1.5 left-2 sm:-left-1 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-[0_8px_20px_-4px_rgba(0,0,0,0.16)] border border-white/90 flex items-center gap-1.5 z-20 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300 pointer-events-none">
+                <span className="text-[11px] font-extrabold text-gray-800">
                   {currentSlide.floatingBadge}
                 </span>
               </div>

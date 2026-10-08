@@ -30,7 +30,7 @@ export const APP_CONFIG = {
     settings: 'beliyuk_settings_v3',
     promos: 'beliyuk_promos_v1',
     categories: 'beliyuk_categories_v1',
-    heroSlides: 'beliyuk_hero_slides_v1',
+    heroSlides: 'beliyuk_hero_slides_v2', // bumped to v2 for 3D commercial cutout visual rollout
   },
   deliveryFee: 10000,
   freeDeliveryThreshold: 100000,

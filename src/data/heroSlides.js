@@ -26,10 +26,10 @@ export const DEFAULT_HERO_SLIDES = [
     title: 'Mau Nyemil Enak? Roti Bakar Beliyuk! 🥪',
     subtitle:
       'Roti bakar tebal gurih dengan olesan Nutella lumer ganda, parutan keju melimpah, dan ChocoCrunch garing.',
-    img: 'https://images.unsplash.com/photo-1584776296944-ab6fb57b0bdd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+    img: '/images/hero_roti_bakar_3d.jpg',
     targetCategory: 'roti_bakar',
     ctaText: 'Pesan Roti Bakar 🥪',
-    floatingBadge: '⭐ 4.9 Nutella & Chocomaltine',
+    floatingBadge: '⭐ 4.9 Nutella & Keju Lumer',
     isActive: true,
     order: 0,
   },
@@ -39,7 +39,7 @@ export const DEFAULT_HERO_SLIDES = [
     title: 'Pilihan Sehat Setiap Hari! Sandwich & Meal Box 🥗',
     subtitle:
       'Sandwich gandum isi telur dada ayam & bento meal box sayur brokoli wortel kaya serat dan tinggi protein.',
-    img: '/images/sandwich_gandum_ayam.jpg',
+    img: '/images/hero_healthy_sandwich_3d.jpg',
     targetCategory: 'healthy_food',
     ctaText: 'Lihat Menu Sehat 🥗',
     floatingBadge: '🥗 100% Bergizi & Segar',
@@ -52,7 +52,7 @@ export const DEFAULT_HERO_SLIDES = [
     title: 'Segarkan Harimu dengan Minuman Dingin! 🥤',
     subtitle:
       'Aneka es segar dingin manis pas, teman paling nikmat untuk santap roti bakar dan makan siang.',
-    img: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+    img: '/images/hero_es_segar_3d.jpg',
     targetCategory: 'minuman',
     ctaText: 'Pilih Minuman Segar 🥤',
     floatingBadge: '❄️ Segar & Dingin Pas',

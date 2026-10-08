@@ -75,15 +75,34 @@ export const compressImageFile = (file, maxWidth = 600, maxHeight = 600, quality
           return;
         }
 
-        // Fill background with white in case PNG has transparency
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, width, height);
+        const isTransparentType =
+          file.type === 'image/png' ||
+          file.type === 'image/webp' ||
+          file.type === 'image/gif';
+
+        // Clear canvas to preserve transparent alpha pixels
+        ctx.clearRect(0, 0, width, height);
+
+        if (!isTransparentType) {
+          // Only fill background with white for JPEG or opaque files
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, width, height);
+        }
+
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Try modern WebP first, fallback to JPEG
-        let compressedDataUrl = canvas.toDataURL('image/webp', quality);
-        if (!compressedDataUrl.startsWith('data:image/webp')) {
-          compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        // Try modern WebP first (which supports alpha transparency), fallback gracefully
+        let compressedDataUrl = '';
+        if (isTransparentType) {
+          compressedDataUrl = canvas.toDataURL('image/webp', quality);
+          if (!compressedDataUrl.startsWith('data:image/webp')) {
+            compressedDataUrl = canvas.toDataURL('image/png');
+          }
+        } else {
+          compressedDataUrl = canvas.toDataURL('image/webp', quality);
+          if (!compressedDataUrl.startsWith('data:image/webp')) {
+            compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          }
         }
 
         // Calculate approximate size in bytes of base64

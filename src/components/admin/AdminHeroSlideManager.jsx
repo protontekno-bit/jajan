@@ -479,9 +479,21 @@ export const AdminHeroSlideManager = ({
 
               {/* Representative Photo Upload / URL */}
               <div className="space-y-2 pt-1 border-t border-gray-100">
-                <label className="block text-xs font-bold text-gray-700">
-                  Foto Representatif Kategori Menu
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-gray-700">
+                    Foto Representatif Kategori Menu
+                  </label>
+                  <span className="text-[10px] font-bold text-[#FF7A00] bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200/60">
+                    Mendukung PNG 3D Transparan
+                  </span>
+                </div>
+
+                <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-2.5 flex items-start gap-2 text-[11px] text-amber-900">
+                  <span className="text-sm flex-shrink-0">✨</span>
+                  <p className="leading-relaxed">
+                    <strong>Tips Efek 3D Berkelas:</strong> Gunakan foto berformat <strong>PNG atau WebP tanpa background</strong> (latar transparan) untuk menghasilkan tampilan makanan melayang dengan bayangan 3D seperti iklan produk komersial.
+                  </p>
+                </div>
 
                 {/* Upload Button + Hidden File Input */}
                 <div className="flex items-center gap-2">
