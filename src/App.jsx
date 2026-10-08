@@ -21,6 +21,7 @@ import { useCart } from './hooks/useCart.js';
 import { useOrders } from './hooks/useOrders.js';
 import { useAdminSettings } from './hooks/useAdminSettings.js';
 import { usePromos } from './hooks/usePromos.js';
+import { useHeroSlides } from './hooks/useHeroSlides.js';
 
 // Lazy-load Admin Components to optimize customer bundle size
 const AdminDashboard = lazy(() =>
@@ -168,6 +169,19 @@ export default function App() {
     syncPromosToCloud,
   } = usePromos();
 
+  // Dynamic Hero Banner Slides Hook (Multi-category carousel)
+  const {
+    slidesList: heroSlides,
+    activeSlides: activeHeroSlides,
+    addSlide: addHeroSlide,
+    updateSlide: updateHeroSlide,
+    deleteSlide: deleteHeroSlide,
+    toggleSlideActive: toggleHeroSlideActive,
+    moveSlide: moveHeroSlide,
+    resetSlidesToDefault: resetHeroSlidesToDefault,
+    syncSlidesToCloud: syncHeroSlidesToCloud,
+  } = useHeroSlides();
+
   // Helper to get current quantity of an item in cart
   const getCartQuantity = (productId) => {
     const item = cart.find((i) => i.id === productId);
@@ -245,6 +259,14 @@ export default function App() {
               onDeletePromo={deletePromo}
               onResetPromos={resetPromosToDefault}
               onSyncPromosToCloud={syncPromosToCloud}
+              heroSlides={heroSlides}
+              onAddSlide={addHeroSlide}
+              onUpdateSlide={updateHeroSlide}
+              onDeleteSlide={deleteHeroSlide}
+              onToggleSlideActive={toggleHeroSlideActive}
+              onMoveSlide={moveHeroSlide}
+              onResetSlides={resetHeroSlidesToDefault}
+              onSyncSlidesToCloud={syncHeroSlidesToCloud}
             />
           </Suspense>
         </main>
@@ -279,10 +301,12 @@ export default function App() {
       <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 pt-3 sm:pt-5">
         {activeTab === 'home' && (
           <>
-            {/* Hero Banner & Search Bar */}
+            {/* Hero Banner & Search Bar (Multi-Category Carousel) */}
             <HeroSection
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
+              heroSlides={activeHeroSlides}
+              onSelectCategory={setActiveCategory}
             />
 
             {/* Mobile-Style Promo Deals Carousel (Auto-hides if empty or all disabled) */}
@@ -291,12 +315,14 @@ export default function App() {
               onSelectPromo={() => setActiveTab('promo')}
             />
 
-            {/* Category Filter Pills */}
-            <CategoryFilter
-              categories={categories}
-              activeCategory={activeCategory}
-              onSelectCategory={setActiveCategory}
-            />
+            {/* Category Filter Pills & Product Grid Anchor */}
+            <div id="catalog-products-section">
+              <CategoryFilter
+                categories={categories}
+                activeCategory={activeCategory}
+                onSelectCategory={setActiveCategory}
+              />
+            </div>
 
             {/* Product Grid with In-Card Stepper, Tanya Ready & Variant Trigger */}
             <ProductGrid

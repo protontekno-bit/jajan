@@ -739,6 +739,106 @@ export const seedCategoriesToCloud = async (categoriesList) => {
   return true;
 };
 
+/**
+ * Real-time listener for Hero Slides from Cloud Firestore `hero_slides` collection.
+ * @param {(slides: Array) => void} onUpdate
+ * @param {(error: any) => void} [onError]
+ * @returns {(() => void) | null}
+ */
+export const subscribeToCloudHeroSlides = (onUpdate, onError) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return null;
 
+  try {
+    const slidesCol = collection(instances.db, 'hero_slides');
+    const unsubscribe = onSnapshot(
+      slidesCol,
+      (snapshot) => {
+        if (snapshot.empty) {
+          onUpdate(null);
+          return;
+        }
+        const items = [];
+        snapshot.forEach((docSnap) => {
+          items.push({
+            ...docSnap.data(),
+            id: docSnap.data().id || docSnap.id,
+          });
+        });
+        items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        onUpdate(items);
+      },
+      (err) => {
+        console.warn('Firestore hero_slides subscription error (fallback to local):', err);
+        if (onError) onError(err);
+      }
+    );
+    return unsubscribe;
+  } catch (err) {
+    console.error('Failed to subscribe to hero_slides:', err);
+    return null;
+  }
+};
 
+/**
+ * Save or update a single hero slide in Cloud Firestore.
+ * Automatically uploads compressed base64 image to Firebase Storage if provided.
+ * @param {Object} slide
+ */
+export const saveHeroSlideToCloud = async (slide) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return false;
 
+  try {
+    let finalSlide = { ...slide };
+    if (finalSlide.img && finalSlide.img.startsWith('data:image/')) {
+      const storageUrl = await uploadProductImageToStorage(finalSlide.img, `slide_${finalSlide.id}`);
+      finalSlide.img = storageUrl;
+    }
+
+    const docRef = doc(instances.db, 'hero_slides', String(finalSlide.id));
+    await setDoc(docRef, finalSlide, { merge: true });
+    return true;
+  } catch (err) {
+    console.error('Failed to save hero slide to Cloud:', err);
+    return false;
+  }
+};
+
+/**
+ * Delete a hero slide item from Cloud Firestore.
+ * @param {string} slideId
+ */
+export const deleteHeroSlideFromCloud = async (slideId) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return false;
+
+  try {
+    const docRef = doc(instances.db, 'hero_slides', String(slideId));
+    await deleteDoc(docRef);
+    return true;
+  } catch (err) {
+    console.error('Failed to delete hero slide from Cloud:', err);
+    return false;
+  }
+};
+
+/**
+ * Batch seed hero slides into Cloud Firestore.
+ * @param {Array} slidesList
+ */
+export const seedHeroSlidesToCloud = async (slidesList) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) throw new Error('Firebase belum aktif');
+
+  const batch = writeBatch(instances.db);
+  const slidesCol = collection(instances.db, 'hero_slides');
+
+  slidesList.forEach((slide, idx) => {
+    const docRef = doc(slidesCol, String(slide.id));
+    batch.set(docRef, { ...slide, order: slide.order ?? idx });
+  });
+
+  await batch.commit();
+  return true;
+};

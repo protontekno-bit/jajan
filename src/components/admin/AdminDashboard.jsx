@@ -27,11 +27,13 @@ import {
   ShoppingBag,
   Tag,
   ExternalLink,
+  Sparkles,
 } from 'lucide-react';
 import { formatRupiah } from '../../utils/currency.js';
 import { ProductImageUploader } from './ProductImageUploader.jsx';
 import { AdminPromoManager } from './AdminPromoManager.jsx';
 import { AdminCategoryManager } from './AdminCategoryManager.jsx';
+import { AdminHeroSlideManager } from './AdminHeroSlideManager.jsx';
 import {
   saveFirebaseConfig,
   getStoredFirebaseConfig,
@@ -86,6 +88,14 @@ export const AdminDashboard = ({
   onDeletePromo,
   onResetPromos,
   onSyncPromosToCloud,
+  heroSlides = [],
+  onAddSlide,
+  onUpdateSlide,
+  onDeleteSlide,
+  onToggleSlideActive,
+  onMoveSlide,
+  onResetSlides,
+  onSyncSlidesToCloud,
 }) => {
   const [activeTab, setActiveTab] = useState('orders'); // default to 'orders' to monitor incoming transactions
   const [searchMenu, setSearchMenu] = useState('');
@@ -457,6 +467,23 @@ export const AdminDashboard = ({
           {promos.filter((p) => p.isActive).length > 0 && (
             <span className="bg-emerald-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">
               {promos.filter((p) => p.isActive).length} Aktif
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('hero_slides')}
+          className={`px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+            activeTab === 'hero_slides'
+              ? 'bg-[#FF7A00] text-white shadow-sm'
+              : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-100'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>Slide Banner Hero ({heroSlides.length})</span>
+          {heroSlides.filter((s) => s.isActive !== false).length > 0 && (
+            <span className="bg-emerald-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">
+              {heroSlides.filter((s) => s.isActive !== false).length} Aktif
             </span>
           )}
         </button>
@@ -1392,6 +1419,22 @@ Mohon dicek dan info nomor rekening / QRIS pembayaran ya, Admin. Terima kasih! ð
           onResetPromos={onResetPromos}
           isCloudActive={isCloudActive}
           onSyncPromosToCloud={onSyncPromosToCloud}
+        />
+      )}
+
+      {/* TAB HERO SLIDES: KELOLA SLIDE BANNER HERO BERANDA */}
+      {activeTab === 'hero_slides' && (
+        <AdminHeroSlideManager
+          slides={heroSlides}
+          categories={categories}
+          onAddSlide={onAddSlide}
+          onUpdateSlide={onUpdateSlide}
+          onDeleteSlide={onDeleteSlide}
+          onToggleActive={onToggleSlideActive}
+          onMoveSlide={onMoveSlide}
+          onResetSlides={onResetSlides}
+          isCloudActive={isCloudActive}
+          onSyncSlidesToCloud={onSyncSlidesToCloud}
         />
       )}
 
