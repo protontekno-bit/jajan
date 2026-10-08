@@ -2,6 +2,8 @@
   "name": "beliyuk-jajan",
   "private": true,
   "version": "1.0.0",
+  "author": "AuraCore Labs Indonesia <auracore.labs@gmail.com> (https://www.auracore.my.id)",
+  "homepage": "https://www.auracore.my.id",
   "type": "module",
   "scripts": {
     "dev": "vite",

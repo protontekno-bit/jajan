@@ -26,6 +26,7 @@ import {
   DollarSign,
   ShoppingBag,
   Tag,
+  ExternalLink,
 } from 'lucide-react';
 import { formatRupiah } from '../../utils/currency.js';
 import { ProductImageUploader } from './ProductImageUploader.jsx';
@@ -1254,6 +1255,47 @@ Mohon dicek dan info nomor rekening / QRIS pembayaran ya, Admin. Terima kasih! ð
                 Buka <strong>Project settings (ikon gerigi)</strong> &rarr; pilih icon Web (<code className="text-xs">&lt;/&gt;</code>) &rarr; salin isi objek <strong>firebaseConfig</strong> dan tempel di kolom atas!
               </li>
             </ol>
+          </div>
+
+          {/* Official Engineering & Developer Studio Card */}
+          <div className="bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-md border border-blue-900/40 relative overflow-hidden">
+            <div className="absolute -right-8 -bottom-8 w-44 h-44 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-extrabold uppercase tracking-wider border border-blue-400/20">
+                  Engineering Studio
+                </div>
+                <h5 className="font-black text-base text-white tracking-tight">
+                  AuraCore Labs Indonesia
+                </h5>
+                <p className="text-xs text-blue-200/80 max-w-lg leading-relaxed font-normal">
+                  Sistem aplikasi katalog web, manajemen menu real-time, dan integrasi WhatsApp Beliyuk Jajan dirancang & direkayasa oleh <strong>AuraCore Labs Indonesia</strong> dengan standar keamanan siber dan performa tinggi.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto flex-shrink-0">
+                <a
+                  href="https://www.auracore.my.id"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 rounded-full bg-white text-blue-950 hover:bg-blue-50 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm text-center"
+                  title="Kunjungi website resmi AuraCore Labs Indonesia"
+                >
+                  <span>www.auracore.my.id</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+                <a
+                  href="https://wa.me/6282256657700"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 rounded-full bg-blue-800/80 hover:bg-blue-800 text-white border border-blue-400/30 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 text-center"
+                  title="Hubungi dukungan teknis AuraCore Labs Indonesia"
+                >
+                  <span>Bantuan Teknis</span>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -117,3 +117,13 @@ firebase deploy --only firestore:rules,storage:rules
 
 ## 📖 Pedoman Arsitektur
 Pelajari struktur arsitektur sistem, alur state, dan pedoman pengembangan di [ARCHITECTURE.md](ARCHITECTURE.md).
+
+---
+
+## 👨‍💻 Pengembang & Engineering Studio
+Aplikasi web ini dirancang, dibangun, dan dirawat oleh:
+* **Studio:** **[AuraCore Labs Indonesia](https://www.auracore.my.id)** (*Boutique Software & AI Engineering Studio*)
+* **Website:** [www.auracore.my.id](https://www.auracore.my.id)
+* **Email Dukungan:** `auracore.labs@gmail.com`
+* **WhatsApp Layanan:** `+62 822-5665-7700`
+* **GitHub:** [github.com/auracorelabs-id](https://github.com/auracorelabs-id)
