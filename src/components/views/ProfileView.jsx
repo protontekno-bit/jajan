@@ -106,6 +106,9 @@ export const ProfileView = () => {
               <label className="font-bold text-gray-700 block mb-1">Nama Panggilan / Lengkap</label>
               <input
                 type="text"
+                id="profile-name-input"
+                name="name"
+                autoComplete="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Contoh: Kak Dinda"
@@ -118,6 +121,9 @@ export const ProfileView = () => {
               <label className="font-bold text-gray-700 block mb-1">Nomor WhatsApp Aktif</label>
               <input
                 type="tel"
+                id="profile-phone-input"
+                name="phone"
+                autoComplete="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="Contoh: 0812-3456-7890"
@@ -131,6 +137,9 @@ export const ProfileView = () => {
             <label className="font-bold text-gray-700 block mb-1">Alamat Antar di Sangatta</label>
             <textarea
               rows={2}
+              id="profile-address-input"
+              name="address"
+              autoComplete="street-address"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               placeholder="Jalan, Gang, Nomor Rumah, RT/RW, Patokan"

@@ -482,6 +482,9 @@ export const CartDrawerModal = ({
                   </label>
                   <input
                     type="text"
+                    id="checkout-customer-name"
+                    name="name"
+                    autoComplete="name"
                     value={customerName}
                     onChange={(e) => handleNameChange(e.target.value)}
                     data-has-error={!!formErrors.name}
@@ -506,6 +509,9 @@ export const CartDrawerModal = ({
                   </label>
                   <input
                     type="tel"
+                    id="checkout-customer-phone"
+                    name="phone"
+                    autoComplete="tel"
                     value={customerPhone}
                     onChange={(e) => handlePhoneChange(e.target.value)}
                     data-has-error={!!formErrors.phone}
@@ -531,6 +537,9 @@ export const CartDrawerModal = ({
                     </label>
                     <textarea
                       rows={2}
+                      id="checkout-delivery-address"
+                      name="address"
+                      autoComplete="street-address"
                       value={deliveryAddress}
                       onChange={(e) => handleAddressChange(e.target.value)}
                       data-has-error={!!formErrors.address}
