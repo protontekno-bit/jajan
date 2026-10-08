@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Tag,
   Check,
+  AlertCircle,
 } from 'lucide-react';
 import { formatRupiah } from '../../utils/currency.js';
 import { APP_CONFIG } from '../../config/constants.js';
@@ -51,10 +52,13 @@ export const CartDrawerModal = ({
   const [customerPhone, setCustomerPhone] = useState(() => profile.phone || '');
   const [orderType, setOrderType] = useState('delivery'); // 'delivery' | 'pickup'
   const [deliveryAddress, setDeliveryAddress] = useState(
-    () => profile.address || APP_CONFIG.storeAddress
+    () => profile.address || ''
   );
   const [notes, setNotes] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Form Validation Errors State
+  const [formErrors, setFormErrors] = useState({});
 
   // Coupon Voucher State
   const [couponCodeInput, setCouponCodeInput] = useState('');
@@ -63,17 +67,26 @@ export const CartDrawerModal = ({
 
   if (!isOpen) return null;
 
-  // Sync profile edits to localStorage on input
+  // Sync profile edits to localStorage on input and clear errors
   const handleNameChange = (val) => {
     setCustomerName(val);
+    if (formErrors.name) {
+      setFormErrors((prev) => ({ ...prev, name: null }));
+    }
     updateProfile({ name: val });
   };
   const handlePhoneChange = (val) => {
     setCustomerPhone(val);
+    if (formErrors.phone) {
+      setFormErrors((prev) => ({ ...prev, phone: null }));
+    }
     updateProfile({ phone: val });
   };
   const handleAddressChange = (val) => {
     setDeliveryAddress(val);
+    if (formErrors.address) {
+      setFormErrors((prev) => ({ ...prev, address: null }));
+    }
     updateProfile({ address: val });
   };
 
@@ -126,16 +139,94 @@ export const CartDrawerModal = ({
     setCouponFeedback(null);
   };
 
+  // Strict Client-Side Checkout Form Validation
+  const validateCheckoutForm = () => {
+    const errors = {};
+    const trimmedName = customerName.trim();
+    // Clean non-digit characters from phone number
+    const rawDigits = customerPhone.replace(/[^\d+]/g, '');
+    const cleanDigits = rawDigits.replace(/\D/g, '');
+    const trimmedAddress = deliveryAddress.trim();
+
+    // 1. Validate Customer Name
+    if (!trimmedName) {
+      errors.name = 'Nama pemesan wajib diisi.';
+    } else if (trimmedName.length < 2) {
+      errors.name = 'Nama pemesan minimal 2 karakter.';
+    }
+
+    // 2. Validate WhatsApp Number (Indonesia: 08xx, 628xx, +628xx, 9-14 digits)
+    if (!rawDigits) {
+      errors.phone = 'Nomor WhatsApp wajib diisi untuk verifikasi kasir.';
+    } else {
+      const isValidIndo = /^(\+?62|0)?8[1-9][0-9]{6,11}$/.test(rawDigits);
+      if (!isValidIndo || cleanDigits.length < 9 || cleanDigits.length > 14) {
+        errors.phone = 'Nomor WhatsApp tidak valid (contoh: 0812-3456-7890).';
+      }
+    }
+
+    // 3. Validate Delivery Address (mandatory if Kurir delivery chosen)
+    if (orderType === 'delivery') {
+      if (!trimmedAddress) {
+        errors.address = 'Alamat pengantaran wajib diisi lengkap untuk kurir.';
+      } else if (trimmedAddress.length < 8) {
+        errors.address = 'Mohon lengkapi alamat (nama jalan, no. rumah, atau patokan).';
+      } else if (
+        trimmedAddress.toLowerCase() === APP_CONFIG.storeAddress.toLowerCase()
+      ) {
+        errors.address = 'Mohon isi alamat rumah Anda di Sangatta (bukan alamat toko).';
+      }
+    }
+
+    setFormErrors(errors);
+
+    // Standardize phone number format for WhatsApp & Firestore
+    const formattedPhone = cleanDigits.startsWith('62')
+      ? cleanDigits
+      : cleanDigits.startsWith('0')
+      ? `62${cleanDigits.slice(1)}`
+      : `62${cleanDigits}`;
+
+    return {
+      isValid: Object.keys(errors).length === 0,
+      errors,
+      sanitizedName: trimmedName,
+      sanitizedPhone: formattedPhone,
+      displayPhone: rawDigits,
+      sanitizedAddress: orderType === 'delivery' ? trimmedAddress : 'Ambil Langsung di Toko Beliyuk Jajan',
+    };
+  };
+
   const handleCheckoutToWhatsApp = () => {
     if (cart.length === 0) return;
 
-    // 1. Generate WhatsApp direct link
+    // Run strict validation
+    const {
+      isValid,
+      sanitizedName,
+      displayPhone,
+      sanitizedAddress,
+    } = validateCheckoutForm();
+
+    if (!isValid) {
+      // Auto-focus on first invalid input field
+      setTimeout(() => {
+        const errorInput = document.querySelector('[data-has-error="true"]');
+        if (errorInput) {
+          errorInput.focus();
+          errorInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
+      return;
+    }
+
+    // 1. Generate WhatsApp direct link with verified authentic details
     const waUrl = generateWhatsAppLink({
       items: cart,
-      customerName: customerName.trim() || 'Pelanggan',
-      customerPhone: customerPhone.trim() || '-',
+      customerName: sanitizedName,
+      customerPhone: displayPhone,
       orderType,
-      deliveryAddress: deliveryAddress.trim(),
+      deliveryAddress: sanitizedAddress,
       notes: notes.trim(),
       subtotal: totalPrice,
       deliveryFee: effectiveDeliveryFee,
@@ -147,10 +238,10 @@ export const CartDrawerModal = ({
     const orderId = `BJ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const orderPayload = {
       id: orderId,
-      customerName: customerName.trim() || 'Pelanggan',
-      customerPhone: customerPhone.trim() || '-',
+      customerName: sanitizedName,
+      customerPhone: displayPhone,
       orderType,
-      address: orderType === 'delivery' ? deliveryAddress.trim() : 'Ambil di Resto Beliyuk Jajan',
+      address: sanitizedAddress,
       notes: notes.trim(),
       items: cart.map((i) => ({
         id: i.id,
@@ -373,43 +464,76 @@ export const CartDrawerModal = ({
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-gray-500 block mb-1">
-                    Nama Pemesan
+                  <label className="text-[11px] font-bold text-gray-700 block mb-1">
+                    Nama Pemesan <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={customerName}
                     onChange={(e) => handleNameChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs font-medium focus:outline-none focus:border-[#FF7A00]"
+                    data-has-error={!!formErrors.name}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-medium focus:outline-none transition-colors ${
+                      formErrors.name
+                        ? 'bg-red-50/40 border-red-400 focus:border-red-500 text-red-900'
+                        : 'bg-gray-50 border-gray-200 focus:border-[#FF7A00] text-gray-800'
+                    }`}
                     placeholder="Contoh: Kak Dinda / Kak Ryan"
                   />
+                  {formErrors.name && (
+                    <p className="text-[10px] text-red-500 font-semibold mt-1 flex items-center gap-1">
+                      <span>•</span>
+                      <span>{formErrors.name}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-gray-500 block mb-1">
-                    Nomor WhatsApp / HP
+                  <label className="text-[11px] font-bold text-gray-700 block mb-1">
+                    Nomor WhatsApp Aktif <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
                     value={customerPhone}
                     onChange={(e) => handlePhoneChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs font-medium focus:outline-none focus:border-[#FF7A00]"
+                    data-has-error={!!formErrors.phone}
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-medium focus:outline-none transition-colors ${
+                      formErrors.phone
+                        ? 'bg-red-50/40 border-red-400 focus:border-red-500 text-red-900'
+                        : 'bg-gray-50 border-gray-200 focus:border-[#FF7A00] text-gray-800'
+                    }`}
                     placeholder="Contoh: 0812-3456-7890"
                   />
+                  {formErrors.phone && (
+                    <p className="text-[10px] text-red-500 font-semibold mt-1 flex items-center gap-1">
+                      <span>•</span>
+                      <span>{formErrors.phone}</span>
+                    </p>
+                  )}
                 </div>
 
                 {orderType === 'delivery' ? (
                   <div>
-                    <label className="text-[11px] font-semibold text-gray-500 block mb-1">
-                      Alamat Antar di Sangatta
+                    <label className="text-[11px] font-bold text-gray-700 block mb-1">
+                      Alamat Pengantaran di Sangatta <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       rows={2}
                       value={deliveryAddress}
                       onChange={(e) => handleAddressChange(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs font-medium focus:outline-none focus:border-[#FF7A00] resize-none"
-                      placeholder="Nama jalan, nomor rumah, gang/RT, patokan"
+                      data-has-error={!!formErrors.address}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs font-medium focus:outline-none resize-none transition-colors ${
+                        formErrors.address
+                          ? 'bg-red-50/40 border-red-400 focus:border-red-500 text-red-900'
+                          : 'bg-gray-50 border-gray-200 focus:border-[#FF7A00] text-gray-800'
+                      }`}
+                      placeholder="Nama jalan, nomor rumah, gang/RT, patokan pengantaran"
                     />
+                    {formErrors.address && (
+                      <p className="text-[10px] text-red-500 font-semibold mt-1 flex items-center gap-1">
+                        <span>•</span>
+                        <span>{formErrors.address}</span>
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="p-3 rounded-2xl bg-orange-50/70 border border-orange-200 text-xs text-gray-700 space-y-1">
@@ -569,6 +693,14 @@ export const CartDrawerModal = ({
                 <span className="text-[#FF7A00]">{formatRupiah(grandTotal)}</span>
               </div>
             </div>
+
+            {/* Validation Error Alert Banner */}
+            {Object.keys(formErrors).length > 0 && (
+              <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <span>Mohon lengkapi data pemesan bertanda bintang (*) di atas.</span>
+              </div>
+            )}
 
             {/* Direct to WhatsApp Button */}
             <button
