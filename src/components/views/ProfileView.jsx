@@ -16,7 +16,7 @@ import { useCustomerProfile } from '../../hooks/useCustomerProfile.js';
  * Allows customer to customize their name, phone, and delivery address.
  */
 export const ProfileView = () => {
-  const { profile, updateProfile } = useCustomerProfile();
+  const { profile, updateProfile, clearProfile } = useCustomerProfile();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: profile.name || '',
@@ -36,11 +36,24 @@ export const ProfileView = () => {
   };
 
   const displayName = profile.name?.trim() || 'Sobat Beliyuk';
-  const displayPhone = profile.phone?.trim() || 'Belum diisi (atur di profil)';
+  const displayPhone = profile.phone?.trim() || 'Belum diisi (otomatis tersimpan saat pesan)';
   const displayAddress = profile.address?.trim() || 'Belum diatur (masukkan alamat antar Anda)';
 
   return (
     <div className="py-4 animate-in fade-in duration-200">
+      {/* Smart Auto-Save Information Banner */}
+      <div className="mb-4 p-4 rounded-3xl bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border border-orange-200/70 flex items-start gap-3 shadow-2xs">
+        <div className="w-8 h-8 rounded-2xl bg-orange-500/10 text-[#FF7A00] flex items-center justify-center flex-shrink-0 mt-0.5">
+          <Sparkles className="w-4 h-4" />
+        </div>
+        <div className="text-xs space-y-1">
+          <h4 className="font-extrabold text-gray-800">Otomatis Tersimpan di Perangkat Ini</h4>
+          <p className="text-gray-500 leading-relaxed">
+            Anda tidak perlu membuat akun atau mengingat kata sandi. Saat Anda memesan di keranjang, nama, nomor WhatsApp, dan alamat antar Anda otomatis tersimpan di HP ini untuk mempermudah pesanan berikutnya.
+          </p>
+        </div>
+      </div>
+
       {/* Profile Card */}
       <div className="bg-white rounded-3xl p-5 sm:p-6 border border-orange-100 shadow-xs mb-5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -214,6 +227,22 @@ export const ProfileView = () => {
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </a>
       </div>
+
+      {/* Optional: Clear local profile button */}
+      {(profile.name || profile.phone || profile.address) && (
+        <div className="text-center pt-2">
+          <button
+            onClick={() => {
+              if (window.confirm('Kosongkan data pemesan yang tersimpan di perangkat ini?')) {
+                clearProfile();
+              }
+            }}
+            className="text-xs font-semibold text-gray-400 hover:text-red-500 transition-colors cursor-pointer py-1.5 px-4 rounded-full hover:bg-red-50"
+          >
+            Kosongkan Data Pemesan di Perangkat Ini
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -265,7 +265,14 @@ export const CartDrawerModal = ({
       status: 'Pesanan Baru 🔔',
     };
 
-    // 2. Save order to Centralized Cloud Firestore Ledger
+    // 2. Auto-save verified customer details to persistent local device profile
+    updateProfile({
+      name: sanitizedName,
+      phone: displayPhone,
+      ...(orderType === 'delivery' && sanitizedAddress ? { address: sanitizedAddress } : {}),
+    });
+
+    // 3. Save order to Centralized Cloud Firestore Ledger
     saveOrderToCloud(orderPayload).catch((err) => {
       console.warn('Gagal mencatat order ke Firestore cloud:', err);
     });
