@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YumYum - Food Delivery</title>
+    
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            yellow: '#FFC107',
+                            orange: '#FF7A00',
+                            red: '#FF4B4B',
+                            light: '#FFF9F0',
+                            white: '#FFFFFF',
+                            dark: '#2D3748',
+                            gray: '#F3F4F6'
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 10px 40px -10px rgba(255, 122, 0, 0.15)',
+                        'float': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom CSS for animations and scrollbar -->
+    <style>
+        /* Hide scrollbar for category slider but keep functionality */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Bouncy hover animations */
+        .bounce-hover {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .bounce-hover:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 15px 30px -10px rgba(255, 122, 0, 0.3);
+        }
+        
+        .btn-bounce {
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .btn-bounce:active {
+            transform: scale(0.9);
+        }
+
+        /* Cart pop animation */
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .animate-pop {
+            animation: pop 0.3s ease-in-out;
+        }
+
+        body {
+            background-color: #FFF9F0; /* Soft warm white */
+            color: #2D3748;
+        }
+    </style>
+</head>
+<body class="pb-24 antialiased">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-40 bg-brand-light/90 backdrop-blur-md px-6 py-4 flex justify-between items-center shadow-sm">
+        <div class="flex items-center gap-2">
+            <div class="w-10 h-10 bg-gradient-to-tr from-brand-orange to-brand-yellow rounded-xl flex items-center justify-center shadow-soft text-white font-bold text-xl">
+                Y
+            </div>
+            <h1 class="text-2xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-orange to-brand-red">YumYum</h1>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-white shadow-soft overflow-hidden border-2 border-brand-yellow">
+            <img src="https://i.pravatar.cc/100?img=3" alt="Profile" class="w-full h-full object-cover">
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 pt-6">
+        
+        <!-- Hero Section -->
+        <section class="mb-8 text-center sm:text-left sm:flex sm:items-center sm:justify-between bg-white p-6 sm:p-8 rounded-3xl shadow-soft relative overflow-hidden">
+            <!-- Decorative circle -->
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-brand-yellow/20 rounded-full blur-3xl"></div>
+            
+            <div class="relative z-10 sm:w-2/3">
+                <h2 class="text-3xl sm:text-4xl font-extrabold mb-2 leading-tight">
+                    Lapar? <br>
+                    <span class="text-brand-orange">Pesan aja sekarang! 🍔</span>
+                </h2>
+                <p class="text-gray-500 mb-6 font-medium">Temukan makanan favoritmu dengan mudah dan cepat.</p>
+                
+                <!-- Search Bar -->
+                <div class="relative max-w-md mx-auto sm:mx-0">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    <input type="text" id="searchInput" class="w-full pl-12 pr-4 py-4 rounded-full bg-brand-gray border-none focus:ring-2 focus:ring-brand-orange focus:bg-white transition-all shadow-inner font-medium placeholder-gray-400" placeholder="Cari burger, pizza, minuman...">
+                </div>
+            </div>
+            
+            <div class="hidden sm:block sm:w-1/3 relative z-10">
+                <img src="https://images.unsplash.com/photo-1550547660-d9450f859349?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80" alt="Hero Burger" class="w-full h-48 object-cover rounded-2xl shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
+            </div>
+        </section>
+
+        <!-- Categories -->
+        <section class="mb-8">
+            <div class="flex items-center justify-between mb-4 px-2">
+                <h3 class="text-xl font-bold">Kategori Menu</h3>
+            </div>
+            <div class="flex gap-3 overflow-x-auto hide-scrollbar pb-4 px-2" id="categoryContainer">
+                <!-- Categories will be injected here via JS -->
+            </div>
+        </section>
+
+        <!-- Product Grid -->
+        <section>
+            <div class="flex items-center justify-between mb-4 px-2">
+                <h3 class="text-xl font-bold" id="gridTitle">Semua Menu</h3>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6" id="productGrid">
+                <!-- Products will be injected here via JS -->
+            </div>
+            
+            <!-- Empty State (Hidden by default) -->
+            <div id="emptyState" class="hidden text-center py-12">
+                <div class="text-5xl mb-4">😢</div>
+                <h4 class="text-lg font-bold text-gray-700">Oops! Menu tidak ditemukan</h4>
+                <p class="text-gray-500">Coba cari dengan kata kunci lain.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Floating Cart -->
+    <div class="fixed bottom-6 left-0 right-0 px-4 z-50 pointer-events-none flex justify-center">
+        <button id="cartBtn" class="pointer-events-auto w-full max-w-sm bg-brand-dark text-white rounded-full py-4 px-6 flex items-center justify-between shadow-float transform transition-transform hover:scale-105 active:scale-95 group">
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <div id="cartIconContainer" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center transition-transform">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                        </svg>
+                    </div>
+                    <span id="cartBadge" class="absolute -top-1 -right-1 bg-brand-red text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-brand-dark transition-transform scale-0">0</span>
+                </div>
+                <div class="text-left">
+                    <p class="text-xs text-gray-300 font-medium">Total Pesanan</p>
+                    <p id="cartTotal" class="font-bold text-brand-yellow">Rp 0</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 font-bold bg-white text-brand-dark px-4 py-2 rounded-full group-hover:bg-brand-yellow transition-colors">
+                Checkout
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </button>
+    </div>
+
+    <!-- Notification Toast (Hidden by default) -->
+    <div id="toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-full shadow-lg font-medium transition-all duration-300 opacity-0 -translate-y-4 pointer-events-none z-50 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        <span id="toastMsg">Ditambahkan ke keranjang</span>
+    </div>
+
+    <script>
+        // --- Data & State ---
+        const categories = [
+            { id: 'all', name: 'Semua', icon: '🍽️' },
+            { id: 'burger', name: 'Burger', icon: '🍔' },
+            { id: 'pizza', name: 'Pizza', icon: '🍕' },
+            { id: 'chicken', name: 'Ayam', icon: '🍗' },
+            { id: 'drink', name: 'Minuman', icon: '🥤' },
+            { id: 'dessert', name: 'Dessert', icon: '🍦' }
+        ];
+
+        const products = [
+            { id: 1, name: 'Double Cheese Burger', price: 45000, category: 'burger', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80', rating: 4.8 },
+            { id: 2, name: 'Pepperoni Pizza XL', price: 85000, category: 'pizza', img: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80', rating: 4.9 },
+            { id: 3, name: 'Crispy Fried Chicken', price: 35000, category: 'chicken', img: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80', rating: 4.7 },
+            { id: 4, name: 'Iced Caramel Macchiato', price: 28000, category: 'drink', img: 'https://images.unsplash.com/photo-1461023058943-0708e52235eb?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80', rating: 4.6 },
+            { id: 5, name: 'Strawberry Waffle', price: 32000, category: 'dessert', img: 'https://images.unsplash.com/photo-1562376552-0d160a2f9fa4?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80', rating: 4.5 },
+            { id: 6, name: 'Spicy Chicken Wings', price: 40000, category: 'chicken', img: 'https://images.unsplash.com/photo-1524114664604-cd8133cd67ad?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80', rating: 4.8 },
+            { id: 7, name: 'Boba Milk Tea', price: 22000, category: 'drink', img: 'https://images.unsplash.com/photo-1558857563-b37102e99e00?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80', rating: 4.4 },
+            { id: 8, name: 'Mushroom Truffle Burger', price: 55000, category: 'burger', img: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80', rating: 4.9 }
+        ];
+
+        let activeCategory = 'all';
+        let searchQuery = '';
+        let cart = [];
+
+        // --- DOM Elements ---
+        const categoryContainer = document.getElementById('categoryContainer');
+        const productGrid = document.getElementById('productGrid');
+        const gridTitle = document.getElementById('gridTitle');
+        const emptyState = document.getElementById('emptyState');
+        const searchInput = document.getElementById('searchInput');
+        const cartBadge = document.getElementById('cartBadge');
+        const cartTotal = document.getElementById('cartTotal');
+        const cartIconContainer = document.getElementById('cartIconContainer');
+        const toast = document.getElementById('toast');
+
+        // --- Format Currency ---
+        const formatMoney = (amount) => {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+        };
+
+        // --- Render Categories ---
+        const renderCategories = () => {
+            categoryContainer.innerHTML = categories.map(cat => `
+                <button 
+                    onclick="setCategory('${cat.id}')"
+                    class="flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-full font-semibold transition-all duration-200 btn-bounce
+                    ${activeCategory === cat.id 
+                        ? 'bg-brand-orange text-white shadow-md' 
+                        : 'bg-white text-brand-dark border-2 border-gray-100 hover:border-brand-yellow hover:bg-brand-light'}"
+                >
+                    <span class="text-lg">${cat.icon}</span>
+                    <span>${cat.name}</span>
+                </button>
+            `).join('');
+        };
+
+        // --- Set Category ---
+        window.setCategory = (id) => {
+            activeCategory = id;
+            renderCategories();
+            renderProducts();
+            
+            const catName = categories.find(c => c.id === id).name;
+            gridTitle.textContent = id === 'all' && !searchQuery ? 'Semua Menu' : `Menu ${catName}`;
+        };
+
+        // --- Render Products ---
+        const renderProducts = () => {
+            let filtered = products;
+
+            if (activeCategory !== 'all') {
+                filtered = filtered.filter(p => p.category === activeCategory);
+            }
+
+            if (searchQuery) {
+                filtered = filtered.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                gridTitle.textContent = `Hasil pencarian: "${searchQuery}"`;
+            }
+
+            if (filtered.length === 0) {
+                productGrid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                productGrid.innerHTML = filtered.map(product => `
+                    <div class="bg-white rounded-3xl p-3 sm:p-4 shadow-sm border border-gray-100 bounce-hover flex flex-col h-full group">
+                        <div class="relative w-full aspect-square rounded-2xl overflow-hidden mb-3 bg-gray-100">
+                            <img src="${product.img}" alt="${product.name}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                            <div class="absolute top-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm">
+                                <span>⭐</span> ${product.rating}
+                            </div>
+                        </div>
+                        <div class="flex-grow flex flex-col justify-between">
+                            <div>
+                                <h4 class="font-bold text-gray-800 text-sm sm:text-base leading-tight mb-1 line-clamp-2">${product.name}</h4>
+                            </div>
+                            <div class="mt-3 flex items-center justify-between">
+                                <span class="font-extrabold text-brand-orange text-sm sm:text-base">${formatMoney(product.price)}</span>
+                                <button 
+                                    onclick="addToCart(${product.id})"
+                                    class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-brand-yellow to-brand-orange text-white flex items-center justify-center shadow-md btn-bounce hover:shadow-lg focus:outline-none"
+                                    aria-label="Add to cart"
+                                >
+                                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        };
+
+        // --- Search Input ---
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderProducts();
+        });
+
+        // --- Cart Logic ---
+        window.addToCart = (productId) => {
+            const product = products.find(p => p.id === productId);
+            const existingItem = cart.find(item => item.id === productId);
+
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({ ...product, quantity: 1 });
+            }
+
+            updateCartUI();
+            showToast();
+            
+            // Animate cart icon
+            cartIconContainer.classList.remove('animate-pop');
+            void cartIconContainer.offsetWidth; // trigger reflow
+            cartIconContainer.classList.add('animate-pop');
+        };
+
+        const updateCartUI = () => {
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+            if (totalItems > 0) {
+                cartBadge.textContent = totalItems;
+                cartBadge.classList.remove('scale-0');
+                cartBadge.classList.add('scale-100');
+            } else {
+                cartBadge.classList.remove('scale-100');
+                cartBadge.classList.add('scale-0');
+            }
+
+            cartTotal.textContent = formatMoney(totalPrice);
+        };
+
+        // --- Toast Notification ---
+        let toastTimeout;
+        const showToast = () => {
+            toast.classList.remove('opacity-0', '-translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', '-translate-y-4');
+            }, 2000);
+        };
+
+        // Checkout button demo
+        document.getElementById('cartBtn').addEventListener('click', () => {
+            if(cart.length === 0) {
+                alert("Keranjang masih kosong. Yuk pilih makanan dulu!");
+            } else {
+                // Dalam aplikasi nyata, ini akan membuka modal checkout atau navigasi ke halaman checkout
+                console.log("Proceeding to checkout with cart:", cart);
+                const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                alert(`Lanjut ke pembayaran sejumlah ${formatMoney(total)} (Demo)`);
+            }
+        });
+
+        // --- Initialize ---
+        renderCategories();
+        renderProducts();
+
+    </script>
+</body>
+</html>

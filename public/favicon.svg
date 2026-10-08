@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <!-- Background Gradient: Brand Orange -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFA133" />
+      <stop offset="100%" stop-color="#FF6600" />
+    </linearGradient>
+
+    <!-- Bread Crust Gradient: Golden Brown -->
+    <linearGradient id="crustGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#8C4610" />
+      <stop offset="100%" stop-color="#6B3005" />
+    </linearGradient>
+
+    <!-- Bread Crumb Gradient: Warm Toast -->
+    <linearGradient id="crumbGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFF5E5" />
+      <stop offset="100%" stop-color="#FED7AA" />
+    </linearGradient>
+
+    <!-- Melting Butter Gradient -->
+    <linearGradient id="butterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF066" />
+      <stop offset="100%" stop-color="#FFB300" />
+    </linearGradient>
+
+    <!-- Subtle Drop Shadow -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#732500" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Modern App Icon Container (Squircle) -->
+  <rect width="64" height="64" rx="16" fill="url(#bgGrad)" />
+
+  <!-- Inner Soft Glow Border -->
+  <rect x="1" y="1" width="62" height="62" rx="15" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="1.5" />
+
+  <!-- Warm Toast Bread Group with Shadow -->
+  <g filter="url(#shadow)">
+    <!-- Outer Bread Crust -->
+    <path
+      d="M19 23.5 C15 21, 14 15, 20.5 14 C27 13, 29.5 16, 32 16 C34.5 16, 37 13, 43.5 14 C50 15, 49 21, 45 23.5 C48 30, 48 44, 46 47 C44 50, 20 50, 18 47 C16 44, 16 30, 19 23.5 Z"
+      fill="url(#crustGrad)"
+    />
+
+    <!-- Inner Soft Toasted Bread -->
+    <path
+      d="M20.2 24.5 C17 22.5, 16.5 17.5, 21.5 16.5 C26.5 15.5, 29 18, 32 18 C35 18, 37.5 15.5, 42.5 16.5 C47.5 17.5, 47 22.5, 43.8 24.5 C46 30, 46 42, 44.5 45 C43 47.5, 21 47.5, 19.5 45 C18 42, 18 30, 20.2 24.5 Z"
+      fill="url(#crumbGrad)"
+    />
+
+    <!-- Toasted Grill Marks (Diagonal Crunchy Lines) -->
+    <path d="M22 28 L30 20" stroke="#C26715" stroke-width="2.2" stroke-linecap="round" opacity="0.75" />
+    <path d="M22 38 L38 22" stroke="#C26715" stroke-width="2.4" stroke-linecap="round" opacity="0.75" />
+    <path d="M26 44 L42 28" stroke="#C26715" stroke-width="2.4" stroke-linecap="round" opacity="0.75" />
+    <path d="M34 45 L42 37" stroke="#C26715" stroke-width="2.2" stroke-linecap="round" opacity="0.75" />
+
+    <!-- Melting Butter Cube on Top of Toast -->
+    <path
+      d="M27.5 28 C27.5 26.5, 36.5 26.5, 36.5 28 C36.5 29, 37 32, 35 33 C33 34, 31 34.5, 29 33 C27 32, 27.5 29.5, 27.5 28 Z"
+      fill="url(#butterGrad)"
+    />
+    <ellipse cx="32" cy="28.5" rx="3.5" ry="1.2" fill="#FFFBE6" opacity="0.8" />
+  </g>
+
+  <!-- Steaming Aroma Curves (Hot & Fresh) -->
+  <path
+    d="M26 11 C25 8, 28 6, 27 3"
+    stroke="#FFFFFF"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    opacity="0.85"
+  />
+  <path
+    d="M34 11 C33 8, 36 6, 35 3"
+    stroke="#FFFFFF"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    opacity="0.85"
+  />
+  <path
+    d="M42 12 C41 9.5, 43.5 8, 42.5 5.5"
+    stroke="#FFFFFF"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    opacity="0.65"
+  />
+
+  <!-- Little Sparkle of Deliciousness -->
+  <path
+    d="M49 8 L50 11 L53 12 L50 13 L49 16 L48 13 L45 12 L48 11 Z"
+    fill="#FFF066"
+    opacity="0.95"
+  />
+</svg>

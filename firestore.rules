@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // 1. KOLEKSI PRODUK (KATALOG MENU ROTI BAKAR)
+    // - Pelanggan umum: Hanya boleh membaca menu & cek stok.
+    // - Administrator: Wajib login untuk menambah, mengubah harga/stok, atau menghapus menu.
+    // =========================================================================
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // =========================================================================
+    // 2. KOLEKSI PESANAN (CENTRALIZED ORDER LEDGER)
+    // - Pelanggan umum: Boleh membuat pesanan baru saat checkout (create only).
+    // - Administrator: Boleh membaca seluruh pesanan masuk & memperbarui status pesanan.
+    // - Tidak ada yang boleh menghapus riwayat pesanan sembarangan.
+    // =========================================================================
+    match /orders/{orderId} {
+      // Pelanggan bisa membuat pesanan baru saat checkout di web
+      allow create: if true;
+      
+      // Hanya administrator terotentikasi yang bisa melihat rekap omset & update status
+      allow read, update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    // =========================================================================
+    // 3. KOLEKSI PROMO & KUPON (BANNER & DISKON)
+    // - Pelanggan umum: Boleh membaca promo aktif.
+    // - Administrator: Wajib login untuk menambah, mengubah, atau menghapus promo.
+    // =========================================================================
+    match /promos/{promoId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // =========================================================================
+    // 4. KOLEKSI KATEGORI MENU (CATEGORY TAXONOMY)
+    // - Pelanggan umum: Boleh membaca daftar kategori menu.
+    // - Administrator: Wajib login untuk menambah, mengubah nama/icon, atau menghapus kategori.
+    // =========================================================================
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // =========================================================================
+    // 5. ATURAN DEFAULT (DENY ALL OTHER COLLECTIONS)
+    // Melindungi dokumen atau koleksi lain agar tidak bisa diakses dari luar.
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,701 @@
+/**
+ * @fileoverview Firebase Client & Cloud Firestore Service Layer
+ * Provides real-time synchronization between Admin Dashboard and all customer devices.
+ * Features graceful offline fallback to LocalStorage if Firebase is unconfigured.
+ */
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import {
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  updateDoc,
+  onSnapshot,
+  writeBatch,
+  query,
+  orderBy,
+} from 'firebase/firestore';
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+} from 'firebase/auth';
+import {
+  getStorage,
+  ref as storageRef,
+  uploadString,
+  getDownloadURL,
+} from 'firebase/storage';
+import { PRODUCTS } from '../data/products.js';
+
+const STORAGE_KEY_FIREBASE_CONFIG = 'beliyuk_firebase_config_v1';
+
+/**
+ * Official Project Credentials for Beliyuk Jajan / UMKM Portal
+ */
+export const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDirKwzrt7TYwP9budkYS7Q8fTIBKR7aik",
+  authDomain: "umknportal.firebaseapp.com",
+  projectId: "umknportal",
+  storageBucket: "umknportal.firebasestorage.app",
+  messagingSenderId: "670755999320",
+  appId: "1:670755999320:web:b28df591fdf8ad9d0b042d",
+};
+
+/**
+ * Retrieve Firebase Configuration from localStorage, env, or default official credentials.
+ */
+export const getStoredFirebaseConfig = () => {
+  if (typeof window === 'undefined') return DEFAULT_FIREBASE_CONFIG;
+
+  // 1. Check localStorage first (if custom override exists)
+  try {
+    const fromStorage = localStorage.getItem(STORAGE_KEY_FIREBASE_CONFIG);
+    if (fromStorage) {
+      return JSON.parse(fromStorage);
+    }
+  } catch (e) {
+    console.warn('Failed to parse stored Firebase config:', e);
+  }
+
+  // 2. Check Vite Environment Variables
+  if (import.meta.env.VITE_FIREBASE_API_KEY) {
+    return {
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    };
+  }
+
+  // 3. Fallback to official umknportal config
+  return DEFAULT_FIREBASE_CONFIG;
+};
+
+// Singleton Firebase instances
+let firebaseApp = null;
+let firestoreDb = null;
+let firebaseAuth = null;
+let firebaseStorage = null;
+
+/**
+ * Initialize Firebase App, Firestore, Auth, and Cloud Storage safely.
+ */
+export const initFirebase = () => {
+  const config = getStoredFirebaseConfig();
+  if (!config || !config.apiKey || !config.projectId) {
+    return null;
+  }
+
+  try {
+    firebaseApp = getApps().length === 0 ? initializeApp(config) : getApp();
+    firestoreDb = getFirestore(firebaseApp);
+    firebaseAuth = getAuth(firebaseApp);
+    if (config.storageBucket) {
+      try {
+        firebaseStorage = getStorage(firebaseApp);
+      } catch (storageErr) {
+        console.warn('Firebase Storage init notice:', storageErr);
+      }
+    }
+    return {
+      app: firebaseApp,
+      db: firestoreDb,
+      auth: firebaseAuth,
+      storage: firebaseStorage,
+    };
+  } catch (error) {
+    console.error('Firebase initialization error:', error);
+    return null;
+  }
+};
+
+/**
+ * Upload compressed product image (Base64 WebP/JPEG) to Firebase Cloud Storage.
+ * Returns public HTTPS download URL, or gracefully falls back to dataUrl.
+ *
+ * @param {string} dataUrl - Compressed data URL
+ * @param {string|number} [productId] - Associated product ID
+ * @returns {Promise<string>} Public HTTPS Download URL or fallback dataUrl
+ */
+export const uploadProductImageToStorage = async (dataUrl, productId = 'new') => {
+  if (!dataUrl || !dataUrl.startsWith('data:image/')) {
+    return dataUrl; // Already a remote HTTP/HTTPS URL
+  }
+
+  const instances = initFirebase();
+  if (!instances || !instances.storage) {
+    console.warn('Firebase Storage not ready, fallback to local compressed dataUrl.');
+    return dataUrl;
+  }
+
+  try {
+    const timestamp = Date.now();
+    const cleanId = String(productId).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const path = `products/menu_${cleanId}_${timestamp}.webp`;
+    const imageRef = storageRef(instances.storage, path);
+
+    const metadata = {
+      contentType: dataUrl.startsWith('data:image/webp') ? 'image/webp' : 'image/jpeg',
+      customMetadata: {
+        app: 'Beliyuk Jajan',
+        uploadedAt: new Date().toISOString(),
+      },
+    };
+
+    await uploadString(imageRef, dataUrl, 'data_url', metadata);
+    const downloadUrl = await getDownloadURL(imageRef);
+    return downloadUrl;
+  } catch (error) {
+    console.warn('Firebase Storage upload notice (using resilient dataUrl):', error);
+    return dataUrl; // Graceful fallback
+  }
+};
+
+/**
+ * Check if Firebase is currently connected and active.
+ */
+export const isFirebaseConfigured = () => {
+  const config = getStoredFirebaseConfig();
+  return Boolean(config && config.apiKey && config.projectId);
+};
+
+/**
+ * Save Firebase configuration from Admin UI and reinitialize.
+ * @param {Object} config
+ */
+export const saveFirebaseConfig = (config) => {
+  try {
+    if (!config) {
+      localStorage.removeItem(STORAGE_KEY_FIREBASE_CONFIG);
+      firebaseApp = null;
+      firestoreDb = null;
+      return true;
+    }
+    localStorage.setItem(STORAGE_KEY_FIREBASE_CONFIG, JSON.stringify(config));
+    initFirebase();
+    return true;
+  } catch (e) {
+    console.error('Failed to save Firebase config:', e);
+    return false;
+  }
+};
+
+/**
+ * Real-time listener for products collection from Cloud Firestore.
+ * Automatically synchronizes changes to every connected customer device.
+ * @param {(products: Array) => void} onUpdate
+ * @param {(error: any) => void} [onError]
+ * @returns {(() => void) | null} Unsubscribe function
+ */
+export const subscribeToCloudProducts = (onUpdate, onError) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) {
+    return null;
+  }
+
+  try {
+    const productsCol = collection(instances.db, 'products');
+    const unsubscribe = onSnapshot(
+      productsCol,
+      (snapshot) => {
+        if (snapshot.empty) {
+          // Cloud collection is empty, trigger seed or pass empty array
+          onUpdate(null);
+          return;
+        }
+
+        const items = [];
+        snapshot.forEach((docSnap) => {
+          items.push({
+            ...docSnap.data(),
+            id: docSnap.data().id || docSnap.id,
+          });
+        });
+
+        // Sort items by original sequence or ID
+        items.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+        onUpdate(items);
+      },
+      (error) => {
+        console.warn('Firestore subscription error (fallback to local):', error);
+        if (onError) onError(error);
+      }
+    );
+
+    return unsubscribe;
+  } catch (e) {
+    console.error('Failed to setup Firestore listener:', e);
+    return null;
+  }
+};
+
+/**
+ * Sync / Seed all local products to Cloud Firestore in a single batch.
+ * @param {Array} [productsList]
+ */
+export const seedProductsToCloud = async (productsList = PRODUCTS) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) {
+    throw new Error('Firebase belum dikonfigurasi!');
+  }
+
+  const batch = writeBatch(instances.db);
+  const productsCol = collection(instances.db, 'products');
+
+  productsList.forEach((prod) => {
+    const docRef = doc(productsCol, String(prod.id));
+    batch.set(docRef, prod);
+  });
+
+  await batch.commit();
+  return true;
+};
+
+/**
+ * Save or update a product in Cloud Firestore.
+ * @param {Object} product
+ */
+export const saveProductToCloud = async (product) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return false;
+
+  try {
+    let finalProduct = { ...product };
+
+    // Automatically convert compressed Base64 to Firebase Storage URL if applicable
+    if (finalProduct.img && finalProduct.img.startsWith('data:image/')) {
+      const storageUrl = await uploadProductImageToStorage(finalProduct.img, finalProduct.id);
+      finalProduct.img = storageUrl;
+    }
+
+    const docRef = doc(instances.db, 'products', String(finalProduct.id));
+    await setDoc(docRef, finalProduct, { merge: true });
+    return true;
+  } catch (e) {
+    console.error('Failed to save product to Cloud:', e);
+    return false;
+  }
+};
+
+/**
+ * Toggle product availability in Cloud Firestore.
+ * @param {string|number} productId
+ * @param {boolean} isAvailable
+ */
+export const updateCloudAvailability = async (productId, isAvailable) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return false;
+
+  try {
+    const docRef = doc(instances.db, 'products', String(productId));
+    await updateDoc(docRef, { isAvailable });
+    return true;
+  } catch (e) {
+    console.error('Failed to update availability in Cloud:', e);
+    return false;
+  }
+};
+
+/**
+ * Delete a product from Cloud Firestore.
+ * @param {string|number} productId
+ */
+export const deleteProductFromCloud = async (productId) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return false;
+
+  try {
+    const docRef = doc(instances.db, 'products', String(productId));
+    await deleteDoc(docRef);
+    return true;
+  } catch (e) {
+    console.error('Failed to delete product from Cloud:', e);
+    return false;
+  }
+};
+
+/**
+ * Log in admin using Firebase Authentication (Email & Password).
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<import('firebase/auth').UserCredential>}
+ */
+export const loginAdmin = async (email, password) => {
+  const instances = initFirebase();
+  if (!instances || !instances.auth) {
+    throw new Error('Firebase Auth belum terinisialisasi!');
+  }
+  return await signInWithEmailAndPassword(instances.auth, email, password);
+};
+
+/**
+ * Register a new admin account in Firebase Authentication.
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<import('firebase/auth').UserCredential>}
+ */
+export const registerAdmin = async (email, password) => {
+  const instances = initFirebase();
+  if (!instances || !instances.auth) {
+    throw new Error('Firebase Auth belum terinisialisasi!');
+  }
+  return await createUserWithEmailAndPassword(instances.auth, email, password);
+};
+
+/**
+ * Sign out current admin user from Firebase Authentication.
+ */
+export const logoutAdmin = async () => {
+  const instances = initFirebase();
+  if (instances && instances.auth) {
+    await signOut(instances.auth);
+  }
+};
+
+/**
+ * Listen for Firebase Auth state changes.
+ * @param {(user: import('firebase/auth').User | null) => void} callback
+ * @returns {(() => void) | null}
+ */
+export const subscribeAdminAuth = (callback) => {
+  const instances = initFirebase();
+  if (!instances || !instances.auth) {
+    callback(null);
+    return null;
+  }
+  return onAuthStateChanged(instances.auth, callback);
+};
+
+// =========================================================================
+// CENTRALIZED ORDER MANAGEMENT (CLOUD FIRESTORE)
+// =========================================================================
+
+/**
+ * Save customer order into Cloud Firestore `orders` collection.
+ * @param {Object} orderData
+ * @returns {Promise<string>} Order ID
+ */
+export const saveOrderToCloud = async (orderData) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) {
+    console.warn('Firebase not active, order saved locally only.');
+    return orderData.id || `BJ-${Date.now()}`;
+  }
+
+  try {
+    const orderId = orderData.id || `BJ-${Date.now().toString().slice(-6)}`;
+    const docRef = doc(instances.db, 'orders', String(orderId));
+    const payload = {
+      ...orderData,
+      id: orderId,
+      status: orderData.status || 'Pesanan Baru 🔔',
+      createdAt: new Date().toISOString(),
+      timestamp: Date.now(),
+    };
+
+    await setDoc(docRef, payload);
+    return orderId;
+  } catch (err) {
+    console.error('Failed to save order to Firestore:', err);
+    return orderData.id || `BJ-${Date.now()}`;
+  }
+};
+
+/**
+ * Real-time listener for incoming orders from Cloud Firestore.
+ * Sorted chronologically descending (newest order on top).
+ * @param {(orders: Array) => void} onUpdate
+ * @param {(error: any) => void} [onError]
+ * @returns {(() => void) | null} Unsubscribe function
+ */
+export const subscribeToCloudOrders = (onUpdate, onError) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return null;
+
+  try {
+    const ordersCol = collection(instances.db, 'orders');
+    const q = query(ordersCol, orderBy('timestamp', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = [];
+        snapshot.forEach((docSnap) => {
+          list.push({
+            ...docSnap.data(),
+            id: docSnap.data().id || docSnap.id,
+          });
+        });
+        onUpdate(list);
+      },
+      (err) => {
+        // Fallback without orderBy if composite index needed
+        console.warn('Orders query listener fallback:', err);
+        const fallbackUnsubscribe = onSnapshot(ordersCol, (snap) => {
+          const list = [];
+          snap.forEach((docSnap) => {
+            list.push({ ...docSnap.data(), id: docSnap.data().id || docSnap.id });
+          });
+          list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          onUpdate(list);
+        });
+        if (onError) onError(err);
+        return fallbackUnsubscribe;
+      }
+    );
+
+    return unsubscribe;
+  } catch (err) {
+    console.error('Failed to subscribe to orders:', err);
+    return null;
+  }
+};
+
+/**
+ * Update order status in Cloud Firestore (e.g., 'Sedang Disiapkan', 'Selesai', 'Batal').
+ * @param {string|number} orderId
+ * @param {string} newStatus
+ */
+export const updateOrderStatusInCloud = async (orderId, newStatus) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return false;
+
+  try {
+    const docRef = doc(instances.db, 'orders', String(orderId));
+    await updateDoc(docRef, {
+      status: newStatus,
+      updatedAt: new Date().toISOString(),
+    });
+    return true;
+  } catch (err) {
+    console.error('Failed to update order status:', err);
+    return false;
+  }
+};
+
+/**
+ * Real-time listener for Promos & Banners from Cloud Firestore `promos` collection.
+ * @param {(promos: Array) => void} onUpdate
+ * @param {(error: any) => void} [onError]
+ * @returns {(() => void) | null}
+ */
+export const subscribeToCloudPromos = (onUpdate, onError) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return null;
+
+  try {
+    const promosCol = collection(instances.db, 'promos');
+    const unsubscribe = onSnapshot(
+      promosCol,
+      (snapshot) => {
+        if (snapshot.empty) {
+          onUpdate(null);
+          return;
+        }
+        const items = [];
+        snapshot.forEach((docSnap) => {
+          items.push({
+            ...docSnap.data(),
+            id: docSnap.data().id || docSnap.id,
+          });
+        });
+        onUpdate(items);
+      },
+      (err) => {
+        console.warn('Firestore promos subscription error (fallback to local):', err);
+        if (onError) onError(err);
+      }
+    );
+    return unsubscribe;
+  } catch (err) {
+    console.error('Failed to subscribe to promos:', err);
+    return null;
+  }
+};
+
+/**
+ * Save or update a single promo item in Cloud Firestore.
+ * @param {Object} promo
+ */
+export const savePromoToCloud = async (promo) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return false;
+
+  try {
+    const docRef = doc(instances.db, 'promos', String(promo.id));
+    await setDoc(docRef, promo, { merge: true });
+    return true;
+  } catch (err) {
+    console.error('Failed to save promo to Cloud:', err);
+    return false;
+  }
+};
+
+/**
+ * Toggle promo active status in Cloud Firestore.
+ * @param {string|number} promoId
+ * @param {boolean} isActive
+ */
+export const updateCloudPromoActive = async (promoId, isActive) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return false;
+
+  try {
+    const docRef = doc(instances.db, 'promos', String(promoId));
+    await updateDoc(docRef, { isActive });
+    return true;
+  } catch (err) {
+    console.error('Failed to update promo status in Cloud:', err);
+    return false;
+  }
+};
+
+/**
+ * Delete a promo item from Cloud Firestore.
+ * @param {string|number} promoId
+ */
+export const deletePromoFromCloud = async (promoId) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return false;
+
+  try {
+    const docRef = doc(instances.db, 'promos', String(promoId));
+    await deleteDoc(docRef);
+    return true;
+  } catch (err) {
+    console.error('Failed to delete promo from Cloud:', err);
+    return false;
+  }
+};
+
+/**
+ * Batch seed promos into Cloud Firestore.
+ * @param {Array} promosList
+ */
+export const seedPromosToCloud = async (promosList) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) throw new Error('Firebase belum aktif');
+
+  const batch = writeBatch(instances.db);
+  const promosCol = collection(instances.db, 'promos');
+
+  promosList.forEach((promo) => {
+    const docRef = doc(promosCol, String(promo.id));
+    batch.set(docRef, promo);
+  });
+
+  await batch.commit();
+  return true;
+};
+
+/**
+ * Real-time listener for Categories from Cloud Firestore `categories` collection.
+ * @param {(categories: Array) => void} onUpdate
+ * @param {(error: any) => void} [onError]
+ * @returns {(() => void) | null}
+ */
+export const subscribeToCloudCategories = (onUpdate, onError) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return null;
+
+  try {
+    const catCol = collection(instances.db, 'categories');
+    const unsubscribe = onSnapshot(
+      catCol,
+      (snapshot) => {
+        if (snapshot.empty) {
+          onUpdate(null);
+          return;
+        }
+        const items = [];
+        snapshot.forEach((docSnap) => {
+          items.push({
+            ...docSnap.data(),
+            id: docSnap.data().id || docSnap.id,
+          });
+        });
+        // Sort with 'all' first, then by order or id
+        items.sort((a, b) => {
+          if (a.id === 'all') return -1;
+          if (b.id === 'all') return 1;
+          return (a.order || 0) - (b.order || 0);
+        });
+        onUpdate(items);
+      },
+      (err) => {
+        console.warn('Firestore categories subscription error (fallback to local):', err);
+        if (onError) onError(err);
+      }
+    );
+    return unsubscribe;
+  } catch (err) {
+    console.error('Failed to subscribe to categories:', err);
+    return null;
+  }
+};
+
+/**
+ * Save or update a single category item in Cloud Firestore.
+ * @param {Object} category
+ */
+export const saveCategoryToCloud = async (category) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return false;
+
+  try {
+    const docRef = doc(instances.db, 'categories', String(category.id));
+    await setDoc(docRef, category, { merge: true });
+    return true;
+  } catch (err) {
+    console.error('Failed to save category to Cloud:', err);
+    return false;
+  }
+};
+
+/**
+ * Delete a category item from Cloud Firestore.
+ * @param {string} categoryId
+ */
+export const deleteCategoryFromCloud = async (categoryId) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return false;
+
+  try {
+    const docRef = doc(instances.db, 'categories', String(categoryId));
+    await deleteDoc(docRef);
+    return true;
+  } catch (err) {
+    console.error('Failed to delete category from Cloud:', err);
+    return false;
+  }
+};
+
+/**
+ * Batch seed categories into Cloud Firestore.
+ * @param {Array} categoriesList
+ */
+export const seedCategoriesToCloud = async (categoriesList) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) throw new Error('Firebase belum aktif');
+
+  const batch = writeBatch(instances.db);
+  const catCol = collection(instances.db, 'categories');
+
+  categoriesList.forEach((cat, idx) => {
+    const docRef = doc(catCol, String(cat.id));
+    batch.set(docRef, { ...cat, order: cat.order ?? idx });
+  });
+
+  await batch.commit();
+  return true;
+};
+
+
+
+

@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Poppins', system-ui, -apple-system, sans-serif;
+  --color-brand-yellow: #FFC107;
+  --color-brand-orange: #FF7A00;
+  --color-brand-red: #FF4B4B;
+  --color-brand-light: #FFF9F0;
+  --color-brand-white: #FFFFFF;
+  --color-brand-dark: #2D3748;
+  --color-brand-gray: #F3F4F6;
+  --shadow-soft: 0 10px 40px -10px rgba(255, 122, 0, 0.15);
+  --shadow-float: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Custom scrollbar hiding utility */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Bouncy hover animations */
+.bounce-hover {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.bounce-hover:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 15px 30px -10px rgba(255, 122, 0, 0.25);
+}
+
+.btn-bounce {
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.btn-bounce:active {
+  transform: scale(0.92);
+}
+
+/* Cart pop bounce animation */
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.animate-pop {
+  animation: pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.safe-area-pb {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
