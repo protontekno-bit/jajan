@@ -144,7 +144,7 @@ export const CartDrawerModal = ({
       grandTotal,
     });
 
-    const orderId = `BJ-${Date.now().toString().slice(-6)}`;
+    const orderId = `BJ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const orderPayload = {
       id: orderId,
       customerName: customerName.trim() || 'Pelanggan',

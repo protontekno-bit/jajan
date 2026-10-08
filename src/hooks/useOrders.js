@@ -1,32 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { APP_CONFIG } from '../config/constants.js';
 
-const INITIAL_DEMO_ORDERS = [
-  {
-    id: 'BJ-202610-01',
-    date: 'Hari ini, 19:30 WITA',
-    customerName: 'Siti Rahma',
-    orderType: 'delivery',
-    address: 'G house no.151 Swarga Bara, Sangatta Utara (75683)',
-    items: [
-      { id: 3, name: 'Roti Bakar Nutella - Chocomaltine', quantity: 1, price: 30000 },
-      { id: 12, name: 'Es Cokelat Lumer Segar', quantity: 1, price: 15000 },
-    ],
-    total: 45000,
-    status: 'Pesanan Terkirim ke WhatsApp',
-  },
-];
-
 /**
- * Custom hook to manage order history stored in localStorage.
+ * Custom hook to manage customer order history stored in local device storage.
+ * Starts with an authentic empty list [] for real users.
  */
 export const useOrders = () => {
   const [orders, setOrders] = useState(() => {
     try {
       const saved = localStorage.getItem(APP_CONFIG.storageKeys.orders);
-      return saved ? JSON.parse(saved) : INITIAL_DEMO_ORDERS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_DEMO_ORDERS;
+      return [];
     }
   });
 
@@ -39,14 +24,15 @@ export const useOrders = () => {
   }, [orders]);
 
   const addOrder = useCallback((orderData) => {
+    const uniqueId = `BJ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const newOrder = {
-      id: `BJ-${Date.now().toString().slice(-6)}`,
+      id: orderData.id || uniqueId,
       date: new Date().toLocaleString('id-ID', {
         dateStyle: 'medium',
         timeStyle: 'short',
       }),
       ...orderData,
-      status: 'Pesanan Terkirim ke WhatsApp',
+      status: orderData.status || 'Pesanan Baru 🔔',
     };
 
     setOrders((prev) => [newOrder, ...prev]);

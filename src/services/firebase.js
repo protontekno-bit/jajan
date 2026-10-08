@@ -389,7 +389,7 @@ export const saveOrderToCloud = async (orderData) => {
   }
 
   try {
-    const orderId = orderData.id || `BJ-${Date.now().toString().slice(-6)}`;
+    const orderId = orderData.id || `BJ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const docRef = doc(instances.db, 'orders', String(orderId));
     const payload = {
       ...orderData,
