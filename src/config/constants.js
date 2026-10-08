@@ -25,7 +25,7 @@ export const APP_CONFIG = {
   storageKeys: {
     cart: 'beliyuk_cart_v1',
     orders: 'beliyuk_orders_v2', // bumped to v2 to purge legacy mock demo order
-    products: 'beliyuk_products_v3', // bumped to v3 for official Roti Bakar menu rollout
+    products: 'beliyuk_products_v4', // bumped to v4 for healthy food sandwich & meal box rollout
     settings: 'beliyuk_settings_v3',
     promos: 'beliyuk_promos_v1',
     categories: 'beliyuk_categories_v1',

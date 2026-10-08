@@ -493,4 +493,80 @@ export const PRODUCTS = [
       },
     ],
   },
+  {
+    id: 17,
+    name: 'Roti Gandum Sandwich Telur & Dada Ayam 🥪',
+    price: 28000,
+    category: 'healthy_food',
+    img: '/images/sandwich_gandum_ayam.jpg',
+    rating: 4.9,
+    isAvailable: true,
+    description: 'Roti gandum sandwich tebal bergizi dengan isian telur dadar gurih, timun segar, selada renyah, dan potongan dada ayam lembut bersaus lezat.',
+    variants: [
+      {
+        id: 'toast_level',
+        name: 'Tingkat Panggang',
+        required: true,
+        type: 'radio',
+        options: [
+          { id: 'soft', name: 'Lembut & Empuk Gurih', priceExtra: 0 },
+          { id: 'crispy', name: 'Garing & Renyah Crispy', priceExtra: 0 },
+        ],
+      },
+      {
+        id: 'sauce_option',
+        name: 'Pilihan Saus',
+        required: false,
+        type: 'radio',
+        options: [
+          { id: 'special_sauce', name: 'Saus Spesial Gurih Manis', priceExtra: 0 },
+          { id: 'spicy_sauce', name: 'Saus Pedas Sedang', priceExtra: 0 },
+          { id: 'no_sauce', name: 'Original / Tanpa Saus (Diet Sehat)', priceExtra: 0 },
+        ],
+      },
+      {
+        id: 'extra_toppings',
+        name: 'Ekstra Topping (Opsional)',
+        required: false,
+        type: 'checkbox',
+        options: [
+          { id: 'extra_egg', name: 'Ekstra Telur Rebus', priceExtra: 5000 },
+          { id: 'extra_chicken', name: 'Ekstra Potongan Dada Ayam', priceExtra: 8000 },
+          { id: 'extra_cheese', name: 'Ekstra Keju Slice', priceExtra: 4000 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 18,
+    name: 'Box Telur Dadar Ayam (Healthy Meal Box) 🥗',
+    price: 32000,
+    category: 'healthy_food',
+    img: '/images/box_telur_dadar_ayam.jpg',
+    rating: 4.9,
+    isAvailable: true,
+    description: 'Paket bento sehat seimbang dalam box: telur dadar ayam lembut, jagung manis pipil segar, brokoli kukus hijau, wortel rebus manis, dan setengah telur rebus kaya protein.',
+    variants: [
+      {
+        id: 'carbo_choice',
+        name: 'Pilihan Karbohidrat',
+        required: true,
+        type: 'radio',
+        options: [
+          { id: 'full_veggie', name: 'Full Jagung Manis & Sayuran (Rendah Kalori)', priceExtra: 0 },
+          { id: 'red_rice', name: 'Tambah Nasi Merah Pulen (+5.000)', priceExtra: 5000 },
+        ],
+      },
+      {
+        id: 'extra_protein',
+        name: 'Ekstra Protein (Opsional)',
+        required: false,
+        type: 'checkbox',
+        options: [
+          { id: 'extra_chicken_breast', name: 'Ekstra Potongan Dada Ayam Gurih', priceExtra: 8000 },
+          { id: 'extra_boiled_egg', name: 'Ekstra 1 Butir Telur Rebus Utuh', priceExtra: 5000 },
+        ],
+      },
+    ],
+  },
 ];
