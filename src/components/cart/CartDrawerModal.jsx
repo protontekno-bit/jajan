@@ -60,6 +60,11 @@ export const CartDrawerModal = ({
   const [deliveryAddress, setDeliveryAddress] = useState(
     () => profile.address || ''
   );
+  // Flexible delivery address switching (saved address vs different location)
+  const hasSavedAddress = Boolean(profile.address && profile.address.trim().length > 0);
+  const [addressMode, setAddressMode] = useState('saved'); // 'saved' | 'different'
+  const [differentAddress, setDifferentAddress] = useState('');
+  const [saveAsPrimaryAddress, setSaveAsPrimaryAddress] = useState(false);
   const [notes, setNotes] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -94,6 +99,12 @@ export const CartDrawerModal = ({
       setFormErrors((prev) => ({ ...prev, address: null }));
     }
     updateProfile({ address: val });
+  };
+  const handleDifferentAddressChange = (val) => {
+    setDifferentAddress(val);
+    if (formErrors.address) {
+      setFormErrors((prev) => ({ ...prev, address: null }));
+    }
   };
 
   // Delivery Calculations
@@ -152,7 +163,10 @@ export const CartDrawerModal = ({
     // Clean non-digit characters from phone number
     const rawDigits = customerPhone.replace(/[^\d+]/g, '');
     const cleanDigits = rawDigits.replace(/\D/g, '');
-    const trimmedAddress = deliveryAddress.trim();
+    const activeAddress = hasSavedAddress && addressMode === 'saved'
+      ? deliveryAddress
+      : differentAddress;
+    const trimmedAddress = activeAddress.trim();
 
     // 1. Validate Customer Name
     if (!trimmedName) {
@@ -266,10 +280,15 @@ export const CartDrawerModal = ({
     };
 
     // 2. Auto-save verified customer details to persistent local device profile
+    // Only update primary address if in saved mode, user checked saveAsPrimary, or profile had no saved address.
+    const shouldUpdatePrimaryAddress = orderType === 'delivery' && sanitizedAddress && (
+      !hasSavedAddress || addressMode === 'saved' || saveAsPrimaryAddress
+    );
+
     updateProfile({
       name: sanitizedName,
       phone: displayPhone,
-      ...(orderType === 'delivery' && sanitizedAddress ? { address: sanitizedAddress } : {}),
+      ...(shouldUpdatePrimaryAddress ? { address: sanitizedAddress } : {}),
     });
 
     // 3. Save order to Centralized Cloud Firestore Ledger
@@ -531,25 +550,107 @@ export const CartDrawerModal = ({
                 </div>
 
                 {orderType === 'delivery' ? (
-                  <div>
-                    <label className="text-[11px] font-bold text-gray-700 block mb-1">
-                      Alamat Pengantaran di Sangatta <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      rows={2}
-                      id="checkout-delivery-address"
-                      name="address"
-                      autoComplete="street-address"
-                      value={deliveryAddress}
-                      onChange={(e) => handleAddressChange(e.target.value)}
-                      data-has-error={!!formErrors.address}
-                      className={`w-full px-3 py-2 rounded-xl border text-xs font-medium focus:outline-none resize-none transition-colors ${
-                        formErrors.address
-                          ? 'bg-red-50/40 border-red-400 focus:border-red-500 text-red-900'
-                          : 'bg-gray-50 border-gray-200 focus:border-[#FF7A00] text-gray-800'
-                      }`}
-                      placeholder="Nama jalan, nomor rumah, gang/RT, patokan pengantaran"
-                    />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-gray-700 block">
+                        Alamat Pengantaran di Sangatta <span className="text-red-500">*</span>
+                      </label>
+                      {hasSavedAddress && (
+                        <span className="text-[10px] text-gray-400 font-medium">
+                          {addressMode === 'saved' ? '🏠 Alamat Utama' : '📍 Lokasi Berbeda'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Quick Switch Buttons if Saved Address exists */}
+                    {hasSavedAddress && (
+                      <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-xl">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddressMode('saved');
+                            if (formErrors.address) setFormErrors((prev) => ({ ...prev, address: null }));
+                          }}
+                          className={`flex-1 py-1 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                            addressMode === 'saved'
+                              ? 'bg-white text-gray-800 shadow-2xs'
+                              : 'text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          <span>🏠 Alamat Utama</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddressMode('different');
+                            if (formErrors.address) setFormErrors((prev) => ({ ...prev, address: null }));
+                          }}
+                          className={`flex-1 py-1 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                            addressMode === 'different'
+                              ? 'bg-white text-[#FF7A00] shadow-2xs'
+                              : 'text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          <span>📍 Lokasi Berbeda</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Address Textarea */}
+                    {addressMode === 'saved' && hasSavedAddress ? (
+                      <div>
+                        <textarea
+                          rows={2}
+                          id="checkout-delivery-address"
+                          name="address"
+                          autoComplete="street-address"
+                          value={deliveryAddress}
+                          onChange={(e) => handleAddressChange(e.target.value)}
+                          data-has-error={!!formErrors.address}
+                          className={`w-full px-3 py-2 rounded-xl border text-xs font-medium focus:outline-none resize-none transition-colors ${
+                            formErrors.address
+                              ? 'bg-red-50/40 border-red-400 focus:border-red-500 text-red-900'
+                              : 'bg-gray-50 border-gray-200 focus:border-[#FF7A00] text-gray-800'
+                          }`}
+                          placeholder="Nama jalan, nomor rumah, gang/RT, patokan pengantaran"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          ✓ Alamat pengiriman utama Anda (otomatis dimuat).
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <textarea
+                          rows={2}
+                          id="checkout-delivery-address-diff"
+                          name="address"
+                          autoComplete="street-address"
+                          value={differentAddress}
+                          onChange={(e) => handleDifferentAddressChange(e.target.value)}
+                          data-has-error={!!formErrors.address}
+                          className={`w-full px-3 py-2 rounded-xl border text-xs font-medium focus:outline-none resize-none transition-colors ${
+                            formErrors.address
+                              ? 'bg-red-50/40 border-red-400 focus:border-red-500 text-red-900'
+                              : 'bg-orange-50/30 border-orange-200 focus:border-[#FF7A00] text-gray-800'
+                          }`}
+                          placeholder="Ketik alamat baru kali ini (contoh: Kantor Dispora, Ruko samping Bank, dll)"
+                        />
+                        {hasSavedAddress && (
+                          <label className="flex items-center gap-2 cursor-pointer pt-0.5 select-none">
+                            <input
+                              type="checkbox"
+                              checked={saveAsPrimaryAddress}
+                              onChange={(e) => setSaveAsPrimaryAddress(e.target.checked)}
+                              className="w-3.5 h-3.5 text-[#FF7A00] accent-[#FF7A00] rounded cursor-pointer"
+                            />
+                            <span className="text-[11px] text-gray-600 font-medium">
+                              Simpan sebagai alamat pengantaran utama baru
+                            </span>
+                          </label>
+                        )}
+                      </div>
+                    )}
+
                     {formErrors.address && (
                       <p className="text-[10px] text-red-500 font-semibold mt-1 flex items-center gap-1">
                         <span>•</span>
