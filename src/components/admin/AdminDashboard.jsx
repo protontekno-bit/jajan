@@ -37,6 +37,8 @@ import {
   getStoredFirebaseConfig,
   subscribeToCloudOrders,
   updateOrderStatusInCloud,
+  deleteOrderFromCloud,
+  clearOrdersFromCloud,
 } from '../../services/firebase.js';
 
 /**
@@ -126,6 +128,40 @@ export const AdminDashboard = ({
     );
     // 2. Cloud Firestore update
     await updateOrderStatusInCloud(orderId, newStatus);
+  };
+
+  const handleDeleteSingleOrder = async (orderId) => {
+    if (!window.confirm(`Hapus pesanan #${orderId} secara permanen dari daftar?`)) {
+      return;
+    }
+    const updated = ordersList.filter((o) => o.id !== orderId);
+    setOrdersList(updated);
+    try {
+      localStorage.setItem('beliyuk_orders_v1', JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Failed to update local storage:', e);
+    }
+    await deleteOrderFromCloud(orderId);
+  };
+
+  const handleClearAllTestOrders = async () => {
+    const count = ordersList.length;
+    if (
+      !window.confirm(
+        `PERINGATAN OPERASIONAL:\n\nApakah Anda yakin ingin menghapus SELURUH ${count} pesanan yang tercatat?\n\nGunakan fitur ini untuk membersihkan riwayat pesanan uji coba/mock sebelum toko beroperasi secara nyata.`
+      )
+    ) {
+      return;
+    }
+
+    const idsToDelete = ordersList.map((o) => o.id);
+    setOrdersList([]);
+    try {
+      localStorage.removeItem('beliyuk_orders_v1');
+    } catch (e) {
+      console.warn('Failed to clear local orders:', e);
+    }
+    await clearOrdersFromCloud(idsToDelete);
   };
 
   // Executive Revenue Metrics (KPIs)
@@ -505,7 +541,7 @@ export const AdminDashboard = ({
           </div>
 
           {/* Orders Filter & Search Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             <input
               type="text"
               value={orderSearchQuery}
@@ -514,25 +550,38 @@ export const AdminDashboard = ({
               className="px-4 py-2.5 rounded-full bg-white border border-gray-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#FF7A00] flex-1 max-w-sm"
             />
 
-            <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar pb-1">
-              {[
-                { id: 'all', label: `Semua (${ordersList.length})` },
-                { id: 'new', label: `Baru (${newOrdersCount})` },
-                { id: 'processing', label: `Diproses (${processingCount})` },
-                { id: 'done', label: `Selesai (${completedCount})` },
-              ].map((filter) => (
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar pb-1">
+                {[
+                  { id: 'all', label: `Semua (${ordersList.length})` },
+                  { id: 'new', label: `Baru (${newOrdersCount})` },
+                  { id: 'processing', label: `Diproses (${processingCount})` },
+                  { id: 'done', label: `Selesai (${completedCount})` },
+                ].map((filter) => (
+                  <button
+                    key={filter.id}
+                    onClick={() => setOrderStatusFilter(filter.id)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                      orderStatusFilter === filter.id
+                        ? 'bg-[#2D3748] text-white shadow-xs'
+                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+
+              {ordersList.length > 0 && (
                 <button
-                  key={filter.id}
-                  onClick={() => setOrderStatusFilter(filter.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
-                    orderStatusFilter === filter.id
-                      ? 'bg-[#2D3748] text-white shadow-xs'
-                      : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-                  }`}
+                  onClick={handleClearAllTestOrders}
+                  className="px-3.5 py-1.5 rounded-full text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+                  title="Bersihkan semua data pesanan uji coba untuk persiapan operasional toko nyata"
                 >
-                  {filter.label}
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Bersihkan Pesanan Uji Coba</span>
                 </button>
-              ))}
+              )}
             </div>
           </div>
 
@@ -601,7 +650,7 @@ export const AdminDashboard = ({
                           </span>
                         </div>
 
-                        {/* Status Badge */}
+                        {/* Status Badge & Actions */}
                         <div className="flex items-center gap-2">
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
@@ -616,6 +665,13 @@ export const AdminDashboard = ({
                           >
                             {order.status || 'Pesanan Baru 🔔'}
                           </span>
+                          <button
+                            onClick={() => handleDeleteSingleOrder(order.id)}
+                            title="Hapus pesanan ini secara permanen"
+                            className="p-1.5 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
 

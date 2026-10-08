@@ -480,6 +480,49 @@ export const updateOrderStatusInCloud = async (orderId, newStatus) => {
 };
 
 /**
+ * Delete a single customer order from Cloud Firestore.
+ * @param {string|number} orderId
+ */
+export const deleteOrderFromCloud = async (orderId) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) return false;
+
+  try {
+    const docRef = doc(instances.db, 'orders', String(orderId));
+    await deleteDoc(docRef);
+    return true;
+  } catch (err) {
+    console.error('Failed to delete order from Cloud:', err);
+    return false;
+  }
+};
+
+/**
+ * Batch delete multiple orders from Cloud Firestore (useful for clearing test orders).
+ * @param {Array<string|number>} orderIds
+ */
+export const clearOrdersFromCloud = async (orderIds = []) => {
+  if (!orderIds || orderIds.length === 0) return true;
+  const instances = initFirebase();
+  if (!instances || !instances.db) return false;
+
+  try {
+    const batch = writeBatch(instances.db);
+    const ordersCol = collection(instances.db, 'orders');
+    orderIds.forEach((id) => {
+      const docRef = doc(ordersCol, String(id));
+      batch.delete(docRef);
+    });
+    await batch.commit();
+    return true;
+  } catch (err) {
+    console.error('Failed to clear orders from Cloud:', err);
+    return false;
+  }
+};
+
+
+/**
  * Real-time listener for Promos & Banners from Cloud Firestore `promos` collection.
  * @param {(promos: Array) => void} onUpdate
  * @param {(error: any) => void} [onError]

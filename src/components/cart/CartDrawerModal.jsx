@@ -21,6 +21,12 @@ import { saveOrderToCloud } from '../../services/firebase.js';
 import { useCustomerProfile } from '../../hooks/useCustomerProfile.js';
 import { evaluateCoupon, AVAILABLE_COUPONS } from '../../data/coupons.js';
 
+const generateOrderTrackingId = () => {
+  const time = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `BJ-${time}-${rand}`;
+};
+
 /**
  * Slide-over / Bottom sheet cart modal with Direct WhatsApp Checkout & Coupons.
  * @param {Object} props
@@ -235,7 +241,7 @@ export const CartDrawerModal = ({
       grandTotal,
     });
 
-    const orderId = `BJ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const orderId = generateOrderTrackingId();
     const orderPayload = {
       id: orderId,
       customerName: sanitizedName,

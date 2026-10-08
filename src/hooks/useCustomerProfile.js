@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { APP_CONFIG } from '../config/constants.js';
 
 const STORAGE_KEY = 'beliyuk_customer_profile_v1';
 
@@ -20,7 +19,7 @@ export const useCustomerProfile = () => {
     return {
       name: '',
       phone: '',
-      address: APP_CONFIG.storeAddress || 'Sangatta Utara, Kutai Timur',
+      address: '',
     };
   });
 

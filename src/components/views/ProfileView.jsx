@@ -10,7 +10,6 @@ import {
   Phone,
 } from 'lucide-react';
 import { useCustomerProfile } from '../../hooks/useCustomerProfile.js';
-import { APP_CONFIG } from '../../config/constants.js';
 
 /**
  * Profile & Account tab view with persistent local customer identity.
@@ -22,7 +21,7 @@ export const ProfileView = () => {
   const [formData, setFormData] = useState({
     name: profile.name || '',
     phone: profile.phone || '',
-    address: profile.address || APP_CONFIG.storeAddress,
+    address: profile.address || '',
   });
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -37,8 +36,8 @@ export const ProfileView = () => {
   };
 
   const displayName = profile.name?.trim() || 'Sobat Beliyuk';
-  const displayPhone = profile.phone?.trim() || 'Belum diisi (isi di profil)';
-  const displayAddress = profile.address?.trim() || APP_CONFIG.storeAddress;
+  const displayPhone = profile.phone?.trim() || 'Belum diisi (atur di profil)';
+  const displayAddress = profile.address?.trim() || 'Belum diatur (masukkan alamat antar Anda)';
 
   return (
     <div className="py-4 animate-in fade-in duration-200">
@@ -64,7 +63,7 @@ export const ProfileView = () => {
             setFormData({
               name: profile.name || '',
               phone: profile.phone || '',
-              address: profile.address || APP_CONFIG.storeAddress,
+              address: profile.address || '',
             });
             setIsEditing(!isEditing);
           }}
