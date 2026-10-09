@@ -19,8 +19,16 @@ const normalizeSlide = (slide) => {
     else if (slide.targetCategory === 'minuman') colorTheme = 'blue';
     else colorTheme = 'orange';
   }
+
+  // Auto-migrate legacy default jpg images to transparent png
+  let img = slide.img || '/images/hero_roti_bakar_3d.png';
+  if (img === '/images/hero_roti_bakar_3d.jpg') img = '/images/hero_roti_bakar_3d.png';
+  if (img === '/images/hero_healthy_sandwich_3d.jpg') img = '/images/hero_healthy_sandwich_3d.png';
+  if (img === '/images/hero_es_segar_3d.jpg') img = '/images/hero_es_segar_3d.png';
+
   return {
     ...slide,
+    img,
     colorTheme,
     order: slide.order ?? 0,
     isActive: slide.isActive !== false,

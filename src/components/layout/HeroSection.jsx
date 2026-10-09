@@ -217,9 +217,9 @@ export const HeroSection = ({
                 loading={safeIndex === 0 ? 'eager' : 'lazy'}
                 onError={(e) => {
                   e.currentTarget.onerror = null;
-                  e.currentTarget.src = '/images/hero_roti_bakar_3d.jpg';
+                  e.currentTarget.src = '/images/hero_roti_bakar_3d.png';
                 }}
-                className="max-h-32 sm:max-h-48 md:max-h-52 w-auto max-w-full object-contain drop-shadow-[0_16px_24px_rgba(0,0,0,0.22)] animate-float-3d group-hover:scale-108 transition-all duration-500 ease-out"
+                className="max-h-32 sm:max-h-48 md:max-h-52 w-auto max-w-full object-contain drop-shadow-[0_16px_24px_rgba(0,0,0,0.22)] animate-float-3d group-hover:scale-108 transition-all duration-500 ease-out mix-blend-multiply"
               />
 
               {/* Realistic Oval Contact Shadow with Pulsing Keyframe */}

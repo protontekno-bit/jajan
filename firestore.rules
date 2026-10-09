@@ -48,7 +48,17 @@ service cloud.firestore {
     }
 
     // =========================================================================
-    // 5. ATURAN DEFAULT (DENY ALL OTHER COLLECTIONS)
+    // 5. KOLEKSI HERO SLIDES (BANNER BERANDA 3D CAROUSEL)
+    // - Pelanggan umum: Boleh membaca slide aktif di smartphone & komputer.
+    // - Administrator: Wajib login untuk mengunggah foto, mengatur slide & tema.
+    // =========================================================================
+    match /hero_slides/{slideId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // =========================================================================
+    // 6. ATURAN DEFAULT (DENY ALL OTHER COLLECTIONS)
     // Melindungi dokumen atau koleksi lain agar tidak bisa diakses dari luar.
     // =========================================================================
     match /{document=**} {

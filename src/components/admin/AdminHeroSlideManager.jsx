@@ -21,7 +21,7 @@ const DEFAULT_FORM_STATE = {
   badge: '✨ Pilihan Spesial',
   title: '',
   subtitle: '',
-  img: '/images/hero_roti_bakar_3d.jpg',
+  img: '/images/hero_roti_bakar_3d.png',
   targetCategory: 'all',
   colorTheme: 'orange',
   ctaText: 'Lihat Menu',
@@ -609,9 +609,9 @@ export const AdminHeroSlideManager = ({
                           alt="Pratinjau Makanan 3D"
                           onError={(e) => {
                             e.currentTarget.onerror = null;
-                            e.currentTarget.src = '/images/hero_roti_bakar_3d.jpg';
+                            e.currentTarget.src = '/images/hero_roti_bakar_3d.png';
                           }}
-                          className="max-h-24 sm:max-h-28 w-auto max-w-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.22)] animate-float-3d"
+                          className="max-h-24 sm:max-h-28 w-auto max-w-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.22)] animate-float-3d mix-blend-multiply"
                         />
                         <div className="w-24 h-2 bg-radial from-black/30 via-black/10 to-transparent rounded-full blur-[2px] mt-1 animate-shadow-pulse pointer-events-none" />
                       </div>
