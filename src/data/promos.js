@@ -7,8 +7,8 @@ export const GRADIENT_PRESETS = [
   { id: 'orange-rose', label: 'Sunset Oranye-Rose', value: 'from-orange-500 to-rose-500' },
   { id: 'rose-red', label: 'Merah Menyala (Sale)', value: 'from-rose-500 to-red-600' },
   { id: 'emerald-teal', label: 'Hijau Emerald (Segar)', value: 'from-emerald-500 to-teal-500' },
-  { id: 'indigo-purple', label: 'Ungu Elegan', value: 'from-indigo-500 to-purple-600' },
-  { id: 'sky-blue', label: 'Biru Cerah', value: 'from-sky-500 to-blue-600' },
+  { id: 'teal-mint', label: 'Mint Segar (Minuman Dingin)', value: 'from-teal-500 to-emerald-600' },
+  { id: 'golden-tea', label: 'Kuning Madu / Teh Jeruk', value: 'from-amber-400 to-orange-500' },
 ];
 
 export const DEFAULT_PROMOS = [

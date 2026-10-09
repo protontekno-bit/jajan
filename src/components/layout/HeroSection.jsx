@@ -35,13 +35,15 @@ export const HeroSection = ({
   const currentSlide = slides[safeIndex] || slides[0];
 
   // Resolve dynamic color theme
-  const themeKey =
+  let themeKey =
     currentSlide.colorTheme ||
     (currentSlide.targetCategory === 'healthy_food'
       ? 'emerald'
       : currentSlide.targetCategory === 'minuman'
-        ? 'blue'
+        ? 'amber'
         : 'orange');
+  if (themeKey === 'blue') themeKey = 'amber';
+  if (themeKey === 'purple') themeKey = 'rose';
   const currentTheme = HERO_COLOR_THEMES[themeKey] || HERO_COLOR_THEMES.orange;
 
   const nextSlide = useCallback(() => {

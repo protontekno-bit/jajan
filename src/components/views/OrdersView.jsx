@@ -140,7 +140,7 @@ export const OrdersView = ({
                 <div className="pt-2 flex items-center gap-1 text-[11px] text-gray-500 font-medium">
                   {ord.orderType === 'pickup' ? (
                     <>
-                      <Store className="w-3.5 h-3.5 text-blue-500" />
+                      <Store className="w-3.5 h-3.5 text-[#FF7A00]" />
                       <span>Ambil Sendiri di Resto</span>
                     </>
                   ) : (

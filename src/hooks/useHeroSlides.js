@@ -14,9 +14,13 @@ import {
  */
 const normalizeSlide = (slide) => {
   let colorTheme = slide.colorTheme;
+  // Migrate unappetizing blue / purple to food-friendly amber / rose
+  if (colorTheme === 'blue') colorTheme = 'amber';
+  if (colorTheme === 'purple') colorTheme = 'rose';
+
   if (!colorTheme) {
     if (slide.targetCategory === 'healthy_food') colorTheme = 'emerald';
-    else if (slide.targetCategory === 'minuman') colorTheme = 'blue';
+    else if (slide.targetCategory === 'minuman') colorTheme = 'amber';
     else colorTheme = 'orange';
   }
 

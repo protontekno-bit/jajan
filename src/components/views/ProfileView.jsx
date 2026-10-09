@@ -208,7 +208,7 @@ export const ProfileView = () => {
 
         <div className="p-4 flex items-center justify-between hover:bg-orange-50/40 transition-colors">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
               <CreditCard className="w-4 h-4" />
             </div>
             <div>
