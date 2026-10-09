@@ -84,4 +84,25 @@
   will-change: transform, opacity;
 }
 
+/* POS Thermal Receipt Print Styles (58mm / 80mm) */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #thermal-receipt-print-area,
+  #thermal-receipt-print-area * {
+    visibility: visible;
+  }
+  #thermal-receipt-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+  }
+}
+
 

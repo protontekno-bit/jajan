@@ -2,6 +2,18 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { APP_CONFIG } from '../config/constants.js';
 
 /**
+ * Generates or retrieves unique item key considering product ID, selected variants, and toppings.
+ */
+export const getCartItemKey = (item) => {
+  if (item.cartKey) return item.cartKey;
+  const vStr = item.selectedVariants ? JSON.stringify(item.selectedVariants) : '';
+  const tStr = Array.isArray(item.selectedToppings)
+    ? item.selectedToppings.map((t) => t.id || t.name).sort().join(',')
+    : '';
+  return `${item.id}-${vStr}-${tStr}`;
+};
+
+/**
  * Custom hook to manage shopping cart state with localStorage persistence.
  * Decouples business logic from presentation layer for AI-friendly testing and modification.
  */
@@ -28,21 +40,25 @@ export const useCart = () => {
   }, [cart]);
 
   /**
-   * Add a product to the cart or increment its quantity
+   * Add a product to the cart or increment its quantity.
+   * Accurately distinguishes identical products with different variants/toppings.
    * @param {import('../types/index.js').Product} product
    */
   const addToCart = useCallback((product) => {
+    const targetKey = getCartItemKey(product);
+    const addedQty = Number(product.quantity) || 1;
+
     setCart((prevCart) => {
-      const existingIndex = prevCart.findIndex((item) => item.id === product.id);
+      const existingIndex = prevCart.findIndex((item) => getCartItemKey(item) === targetKey);
       if (existingIndex > -1) {
         const next = [...prevCart];
         next[existingIndex] = {
           ...next[existingIndex],
-          quantity: next[existingIndex].quantity + 1,
+          quantity: next[existingIndex].quantity + addedQty,
         };
         return next;
       }
-      return [...prevCart, { ...product, quantity: 1 }];
+      return [...prevCart, { ...product, cartKey: targetKey, quantity: addedQty }];
     });
 
     setLastAddedItem(product);
@@ -51,27 +67,37 @@ export const useCart = () => {
   }, []);
 
   /**
-   * Update quantity of an item in the cart
-   * @param {number} productId
+   * Update quantity of an item in the cart by unique cartKey or fallback productId.
+   * @param {string|number} targetKey
    * @param {number} newQuantity
    */
-  const updateQuantity = useCallback((productId, newQuantity) => {
+  const updateQuantity = useCallback((targetKey, newQuantity) => {
     setCart((prevCart) => {
       if (newQuantity <= 0) {
-        return prevCart.filter((item) => item.id !== productId);
+        return prevCart.filter(
+          (item) => getCartItemKey(item) !== String(targetKey) && String(item.id) !== String(targetKey)
+        );
       }
-      return prevCart.map((item) =>
-        item.id === productId ? { ...item, quantity: newQuantity } : item
-      );
+      return prevCart.map((item) => {
+        const itemKey = getCartItemKey(item);
+        if (itemKey === String(targetKey) || String(item.id) === String(targetKey)) {
+          return { ...item, quantity: newQuantity };
+        }
+        return item;
+      });
     });
   }, []);
 
   /**
-   * Remove item entirely from cart
-   * @param {number} productId
+   * Remove item entirely from cart by unique cartKey or fallback productId.
+   * @param {string|number} targetKey
    */
-  const removeFromCart = useCallback((productId) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
+  const removeFromCart = useCallback((targetKey) => {
+    setCart((prevCart) =>
+      prevCart.filter(
+        (item) => getCartItemKey(item) !== String(targetKey) && String(item.id) !== String(targetKey)
+      )
+    );
   }, []);
 
   /**

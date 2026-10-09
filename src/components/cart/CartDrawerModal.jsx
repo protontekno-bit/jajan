@@ -23,6 +23,7 @@ import { generateWhatsAppLink } from '../../utils/whatsapp.js';
 import { saveOrderToCloud } from '../../services/firebase.js';
 import { useCustomerProfile } from '../../hooks/useCustomerProfile.js';
 import { evaluateCoupon, AVAILABLE_COUPONS } from '../../data/coupons.js';
+import { getCartItemKey } from '../../hooks/useCart.js';
 
 const generateOrderTrackingId = () => {
   const time = Date.now().toString(36).toUpperCase();
@@ -464,53 +465,80 @@ export const CartDrawerModal = ({
                 <h5 className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">
                   Menu Dipesan
                 </h5>
-                {cart.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 p-2.5 bg-gray-50/80 rounded-2xl border border-gray-100"
-                  >
-                    <img
-                      src={item.img}
-                      alt={item.name}
-                      className="w-14 h-14 object-cover rounded-xl"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h6 className="font-bold text-gray-800 text-xs sm:text-sm truncate">
-                        {item.name}
-                      </h6>
-                      <p className="text-xs font-extrabold text-[#FF7A00] mt-0.5">
-                        {formatRupiah(item.price)}
-                      </p>
-                    </div>
+                {cart.map((item) => {
+                  const itemKey = getCartItemKey(item);
+                  return (
+                    <div
+                      key={itemKey}
+                      className="flex items-start gap-3 p-2.5 bg-gray-50/80 rounded-2xl border border-gray-100"
+                    >
+                      <img
+                        src={item.img}
+                        alt={item.name}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1584776296944-ab6fb57b0bdd?w=500';
+                        }}
+                        className="w-14 h-14 object-cover rounded-xl flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h6 className="font-bold text-gray-800 text-xs sm:text-sm truncate">
+                          {item.name}
+                        </h6>
 
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                        className="w-6 h-6 rounded-full bg-white text-gray-600 border border-gray-200 flex items-center justify-center hover:bg-gray-100 btn-bounce cursor-pointer"
-                        aria-label="Kurangi kuantitas"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="w-4 text-center font-bold text-xs text-gray-800">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                        className="w-6 h-6 rounded-full bg-[#FF7A00] text-white flex items-center justify-center hover:bg-orange-600 btn-bounce cursor-pointer"
-                        aria-label="Tambah kuantitas"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => onRemoveItem(item.id)}
-                        className="p-1 text-gray-300 hover:text-red-500 transition-colors ml-0.5 cursor-pointer"
-                        aria-label="Hapus item"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        {/* Rincian Varian Terpilih */}
+                        {item.selectedVariants && Object.keys(item.selectedVariants).length > 0 && (
+                          <div className="text-[11px] text-gray-500 mt-0.5 space-y-0.5">
+                            {Object.entries(item.selectedVariants).map(([vName, opt]) => (
+                              <span key={vName} className="block truncate">
+                                • {vName}: <strong className="text-gray-700">{opt.name}</strong>
+                                {opt.priceExtra ? ` (+${formatRupiah(opt.priceExtra)})` : ''}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Rincian Topping Terpilih */}
+                        {item.selectedToppings && item.selectedToppings.length > 0 && (
+                          <p className="text-[11px] text-orange-600 font-semibold mt-0.5 truncate">
+                            + Topping: {item.selectedToppings.map((t) => t.name).join(', ')}
+                          </p>
+                        )}
+
+                        <p className="text-xs font-extrabold text-[#FF7A00] mt-1">
+                          {formatRupiah(item.price)}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-shrink-0 mt-1">
+                        <button
+                          onClick={() => onUpdateQuantity(itemKey, item.quantity - 1)}
+                          className="w-6 h-6 rounded-full bg-white text-gray-600 border border-gray-200 flex items-center justify-center hover:bg-gray-100 btn-bounce cursor-pointer"
+                          aria-label="Kurangi kuantitas"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-4 text-center font-bold text-xs text-gray-800">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => onUpdateQuantity(itemKey, item.quantity + 1)}
+                          className="w-6 h-6 rounded-full bg-[#FF7A00] text-white flex items-center justify-center hover:bg-orange-600 btn-bounce cursor-pointer"
+                          aria-label="Tambah kuantitas"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onRemoveItem(itemKey)}
+                          className="p-1 text-gray-300 hover:text-red-500 transition-colors ml-0.5 cursor-pointer"
+                          aria-label="Hapus item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Delivery / Pickup Method Toggle */}

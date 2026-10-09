@@ -32,12 +32,18 @@ import {
   Tag,
   ExternalLink,
   Sparkles,
+  Printer,
+  Volume2,
+  VolumeX,
+  Bell,
 } from 'lucide-react';
 import { formatRupiah } from '../../utils/currency.js';
 import { AdminPromoManager } from './AdminPromoManager.jsx';
 import { AdminCategoryManager } from './AdminCategoryManager.jsx';
 import { AdminHeroSlideManager } from './AdminHeroSlideManager.jsx';
 import { AdminProductModal } from './AdminProductModal.jsx';
+import { ThermalReceiptModal } from './ThermalReceiptModal.jsx';
+import { playNewOrderChime, unlockAudio } from '../../utils/audioAlert.js';
 import {
   saveFirebaseConfig,
   getStoredFirebaseConfig,
@@ -129,6 +135,14 @@ export const AdminDashboard = ({
   const [orderStatusFilter, setOrderStatusFilter] = useState('all'); // 'all' | 'new' | 'processing' | 'done' | 'cancel'
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
 
+  // Thermal Receipt POS Print State
+  const [receiptOrder, setReceiptOrder] = useState(null);
+
+  // Audio Chime Alert State for Kitchen & Cashier
+  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+  const prevNewOrderCountRef = React.useRef(0);
+  const isInitialMountRef = React.useRef(true);
+
   // Real-time listener for incoming customer orders from Cloud Firestore
   React.useEffect(() => {
     const unsubscribe = subscribeToCloudOrders(
@@ -149,6 +163,29 @@ export const AdminDashboard = ({
       if (unsubscribe) unsubscribe();
     };
   }, []);
+
+  // Monitor incoming new orders and sound kitchen chime alert
+  React.useEffect(() => {
+    const currentNewOrders = ordersList.filter(
+      (o) => o.status?.includes('Baru') || !o.status
+    ).length;
+
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      prevNewOrderCountRef.current = currentNewOrders;
+      return;
+    }
+
+    if (currentNewOrders > prevNewOrderCountRef.current && isSoundEnabled) {
+      playNewOrderChime();
+    }
+    prevNewOrderCountRef.current = currentNewOrders;
+  }, [ordersList, isSoundEnabled]);
+
+  const handleTestSound = () => {
+    unlockAudio();
+    playNewOrderChime();
+  };
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     // 1. Optimistic local update
@@ -597,6 +634,33 @@ export const AdminDashboard = ({
                 ))}
               </div>
 
+              {/* Sound Notification Alert Controls */}
+              <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-full">
+                <button
+                  type="button"
+                  onClick={() => setIsSoundEnabled((prev) => !prev)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    isSoundEnabled
+                      ? 'bg-emerald-600 text-white shadow-2xs font-black'
+                      : 'bg-white text-gray-500 hover:text-gray-700 border border-gray-200'
+                  }`}
+                  title={isSoundEnabled ? 'Suara dering aktif' : 'Suara dering dibisukan'}
+                >
+                  {isSoundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                  <span>{isSoundEnabled ? 'Dering: Aktif' : 'Dering: Bisu'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTestSound}
+                  className="px-2.5 py-1.5 rounded-full bg-white text-gray-700 hover:bg-orange-50 text-[11px] font-bold border border-gray-200 flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Tes nada bel restoran kasir"
+                >
+                  <Bell className="w-3 h-3 text-[#FF7A00]" />
+                  <span>Tes Suara</span>
+                </button>
+              </div>
+
               {ordersList.length > 0 && (
                 <button
                   onClick={handleClearAllTestOrders}
@@ -609,6 +673,32 @@ export const AdminDashboard = ({
               )}
             </div>
           </div>
+
+          {/* New Orders Visual Pulsing Banner */}
+          {newOrdersCount > 0 && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-red-50 via-orange-50 to-amber-50 border-2 border-red-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-2xl bg-red-600 text-white flex items-center justify-center font-black flex-shrink-0 animate-bounce">
+                  <Bell className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-black text-red-800">
+                    Ada {newOrdersCount} Pesanan Baru Masuk!
+                  </h4>
+                  <p className="text-[11px] text-red-600 font-medium">
+                    Segera ubah status pesanan menjadi "Disiapkan" agar koki segera memproses di dapur.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOrderStatusFilter('new')}
+                className="px-3.5 py-1.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs whitespace-nowrap cursor-pointer shadow-xs self-start sm:self-auto"
+              >
+                Tampilkan Pesanan Baru ({newOrdersCount})
+              </button>
+            </div>
+          )}
 
           {/* Real-time Order Cards List */}
           {ordersList.length === 0 ? (
@@ -690,6 +780,18 @@ export const AdminDashboard = ({
                           >
                             {order.status || 'Pesanan Baru ðŸ””'}
                           </span>
+
+                          {/* Tombol Cetak Struk POS Thermal */}
+                          <button
+                            type="button"
+                            onClick={() => setReceiptOrder(order)}
+                            title="Cetak Struk Thermal (58mm/80mm) untuk Dapur & Kurir"
+                            className="px-2.5 py-1 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#FF7A00] border border-orange-200 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>Cetak Struk</span>
+                          </button>
+
                           <button
                             onClick={() => handleDeleteSingleOrder(order.id)}
                             title="Hapus pesanan ini secara permanen"
@@ -1633,6 +1735,15 @@ Mohon dicek dan info nomor rekening / QRIS pembayaran ya, Admin. Terima kasih! ð
           }
           setTimeout(() => setMenuToast(null), 3500);
         }}
+      />
+
+      {/* Modal Cetak Struk POS Thermal (58mm / 80mm untuk Dapur & Kurir) */}
+      <ThermalReceiptModal
+        isOpen={Boolean(receiptOrder)}
+        order={receiptOrder}
+        onClose={() => setReceiptOrder(null)}
+        storeName={settings?.storeName}
+        whatsappNumber={settings?.whatsappNumber}
       />
     </div>
   );
