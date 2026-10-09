@@ -263,6 +263,23 @@ export const seedProductsToCloud = async (productsList = PRODUCTS) => {
 };
 
 /**
+ * Recursively cleanses payload to ensure no `undefined` values are sent to Firestore,
+ * which would otherwise cause Firestore to throw an exception and reject writes.
+ */
+const cleanFirestorePayload = (val) => {
+  if (val === undefined) return null;
+  if (val === null || typeof val !== 'object') return val;
+  if (Array.isArray(val)) return val.map(cleanFirestorePayload);
+  const res = {};
+  for (const [k, v] of Object.entries(val)) {
+    if (v !== undefined) {
+      res[k] = cleanFirestorePayload(v);
+    }
+  }
+  return res;
+};
+
+/**
  * Save or update a product in Cloud Firestore.
  * @param {Object} product
  */
@@ -279,8 +296,9 @@ export const saveProductToCloud = async (product) => {
       finalProduct.img = storageUrl;
     }
 
+    const cleaned = cleanFirestorePayload(finalProduct);
     const docRef = doc(instances.db, 'products', String(finalProduct.id));
-    await setDoc(docRef, finalProduct, { merge: true });
+    await setDoc(docRef, cleaned, { merge: true });
     return true;
   } catch (e) {
     console.error('Failed to save product to Cloud:', e);

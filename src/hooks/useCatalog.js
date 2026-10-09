@@ -17,6 +17,31 @@ import {
 } from '../services/firebase.js';
 
 /**
+ * Safely normalizes and validates variant groups and their options.
+ * Ensures consistent structure, types, and removes undefined/corrupt entries.
+ */
+const sanitizeVariants = (variants) => {
+  if (!Array.isArray(variants)) return [];
+  return variants
+    .filter((g) => g && typeof g === 'object' && g.name?.trim())
+    .map((g, gIdx) => ({
+      id: g.id || `var_${Date.now()}_${gIdx}`,
+      name: g.name.trim(),
+      type: g.type === 'checkbox' ? 'checkbox' : 'radio',
+      required: Boolean(g.required),
+      options: Array.isArray(g.options)
+        ? g.options
+            .filter((opt) => opt && typeof opt === 'object' && opt.name?.trim())
+            .map((opt, oIdx) => ({
+              id: opt.id || `opt_${Date.now()}_${gIdx}_${oIdx}`,
+              name: opt.name.trim(),
+              priceExtra: Math.max(0, Number(opt.priceExtra) || 0),
+            }))
+        : [],
+    }));
+};
+
+/**
  * Custom hook to manage catalog navigation, search filtering, product updates,
  * and dynamic category taxonomy management.
  * Features seamless real-time synchronization with Firebase Cloud Firestore
@@ -143,6 +168,35 @@ export const useCatalog = () => {
     }
   }, [productsList]);
 
+  // Multi-Tab real-time synchronization via browser storage event
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key === APP_CONFIG.storageKeys.products && event.newValue) {
+        try {
+          const parsed = JSON.parse(event.newValue);
+          if (Array.isArray(parsed)) {
+            setProductsList(parsed);
+          }
+        } catch (e) {
+          console.warn('Failed to parse cross-tab products update:', e);
+        }
+      }
+      if (event.key === APP_CONFIG.storageKeys.categories && event.newValue) {
+        try {
+          const parsed = JSON.parse(event.newValue);
+          if (Array.isArray(parsed)) {
+            setCategoriesList(parsed);
+          }
+        } catch (e) {
+          console.warn('Failed to parse cross-tab categories update:', e);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   // Real-time Cloud Products Listener
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -193,7 +247,7 @@ export const useCatalog = () => {
     setProductsList((prev) => {
       let updatedProd = null;
       const updated = prev.map((p) => {
-        if (p.id === productId) {
+        if (String(p.id) === String(productId)) {
           const nextVal = !p.isAvailable;
           updatedProd = { ...p, isAvailable: nextVal };
           return updatedProd;
@@ -212,7 +266,7 @@ export const useCatalog = () => {
     setProductsList((prev) => {
       let updatedProd = null;
       const updated = prev.map((p) => {
-        if (p.id === productId) {
+        if (String(p.id) === String(productId)) {
           const nextVal = p.isActive === false;
           updatedProd = { ...p, isActive: nextVal };
           return updatedProd;
@@ -229,7 +283,7 @@ export const useCatalog = () => {
   // Admin action: Move product position up or down in catalog
   const moveProduct = useCallback(
     async (productId, direction) => {
-      const idx = productsList.findIndex((p) => p.id === productId);
+      const idx = productsList.findIndex((p) => String(p.id) === String(productId));
       if (idx === -1) return productsList;
 
       const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
@@ -269,15 +323,16 @@ export const useCatalog = () => {
   const updateProduct = useCallback((updatedProduct) => {
     const sanitized = {
       ...updatedProduct,
-      price: Number(updatedProduct.price),
+      id: String(updatedProduct.id),
+      price: Number(updatedProduct.price) || 0,
       originalPrice: updatedProduct.originalPrice ? Number(updatedProduct.originalPrice) : null,
       rating: updatedProduct.rating !== undefined ? Number(updatedProduct.rating) : 5.0,
       isAvailable: updatedProduct.isAvailable !== false,
       isActive: updatedProduct.isActive !== false,
-      variants: Array.isArray(updatedProduct.variants) ? updatedProduct.variants : [],
+      variants: sanitizeVariants(updatedProduct.variants),
     };
     setProductsList((prev) =>
-      prev.map((p) => (p.id === sanitized.id ? sanitized : p))
+      prev.map((p) => (String(p.id) === String(sanitized.id) ? sanitized : p))
     );
     if (isFirebaseConfigured()) {
       saveProductToCloud(sanitized).catch(console.error);
@@ -288,14 +343,14 @@ export const useCatalog = () => {
   const addProduct = useCallback((newProduct) => {
     const itemToAdd = {
       ...newProduct,
-      id: newProduct.id || Date.now(),
+      id: newProduct.id ? String(newProduct.id) : String(Date.now()),
       price: Number(newProduct.price) || 0,
       originalPrice: newProduct.originalPrice ? Number(newProduct.originalPrice) : null,
       rating: newProduct.rating !== undefined ? Number(newProduct.rating) : 5.0,
       isAvailable: newProduct.isAvailable !== false,
       isActive: newProduct.isActive !== false,
       order: 0,
-      variants: Array.isArray(newProduct.variants) ? newProduct.variants : [],
+      variants: sanitizeVariants(newProduct.variants),
     };
     setProductsList((prev) => {
       const nextList = [
@@ -311,7 +366,7 @@ export const useCatalog = () => {
 
   // Admin action: Delete a product
   const deleteProduct = useCallback((productId) => {
-    setProductsList((prev) => prev.filter((p) => p.id !== productId));
+    setProductsList((prev) => prev.filter((p) => String(p.id) !== String(productId)));
     if (isFirebaseConfigured()) {
       deleteProductFromCloud(productId).catch(console.error);
     }
