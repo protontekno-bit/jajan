@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { formatRupiah } from '../../utils/currency.js';
 import { GRADIENT_PRESETS } from '../../data/promos.js';
+import { DEFAULT_CATEGORIES } from '../../data/categories.js';
 
 const ICON_OPTIONS = [
   { id: 'percent', label: 'Persen (%)', icon: Percent },
@@ -58,6 +59,9 @@ const DEFAULT_FORM_STATE = {
   maxDiscount: 15000,
   minOrder: 30000,
   validUntil: '31 Des 2026',
+  expiryDate: '', // Format YYYY-MM-DD
+  usageLimit: 0, // 0 = unlimited kuota
+  targetCategory: 'all', // 'all' atau ID kategori spesifik
   color: 'from-amber-500 to-orange-500',
   iconType: 'percent',
   isActive: true,
@@ -122,6 +126,9 @@ export const AdminPromoManager = ({
       discountValue: Number(formData.discountValue) || 0,
       maxDiscount: Number(formData.maxDiscount) || 0,
       minOrder: Number(formData.minOrder) || 0,
+      expiryDate: formData.expiryDate ? formData.expiryDate.trim() : '',
+      usageLimit: Number(formData.usageLimit) || 0,
+      targetCategory: formData.targetCategory || 'all',
     };
 
     if (editingPromoId) {
@@ -310,9 +317,27 @@ export const AdminPromoManager = ({
                   <span className="font-bold text-gray-800">{formatRupiah(promo.minOrder || 0)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400 font-medium">Berlaku Sampai:</span>
-                  <span className="font-bold text-gray-800">{promo.validUntil || 'Setiap Hari'}</span>
+                  <span className="text-gray-400 font-medium">Cakupan Menu:</span>
+                  <span className="font-bold text-gray-800">
+                    {promo.targetCategory && promo.targetCategory !== 'all'
+                      ? DEFAULT_CATEGORIES.find((c) => c.id === promo.targetCategory)?.name || promo.targetCategory
+                      : 'Semua Kategori Menu'}
+                  </span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400 font-medium">Berlaku Sampai:</span>
+                  <span className="font-bold text-gray-800">
+                    {promo.validUntil || (promo.expiryDate ? `Sampai ${promo.expiryDate}` : 'Setiap Hari')}
+                  </span>
+                </div>
+                {Number(promo.usageLimit) > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400 font-medium">Batas Kuota:</span>
+                    <span className="font-bold text-purple-600">
+                      {promo.usageCount || 0} / {promo.usageLimit} Penggunaan
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Controls & Actions */}
@@ -563,13 +588,53 @@ export const AdminPromoManager = ({
                 </div>
 
                 <div>
-                  <label className="font-bold text-gray-700 block mb-1">Masa Berlaku</label>
+                  <label className="font-bold text-gray-700 block mb-1">Cakupan Kategori Menu</label>
+                  <select
+                    value={formData.targetCategory || 'all'}
+                    onChange={(e) => setFormData({ ...formData, targetCategory: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 font-semibold focus:outline-none focus:border-[#FF7A00]"
+                  >
+                    <option value="all">Semua Kategori (Bebas Menu)</option>
+                    {DEFAULT_CATEGORIES.filter((c) => c.id !== 'all').map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.icon} {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-gray-700 block mb-1">Teks Masa Berlaku</label>
                   <input
                     type="text"
                     value={formData.validUntil}
                     onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
-                    placeholder="Contoh: 31 Des 2026 / Setiap Hari"
+                    placeholder="Contoh: 31 Des 2026 / Tiap Hari"
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:border-[#FF7A00]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-gray-700 block mb-1">Tanggal Expired (Auto)</label>
+                  <input
+                    type="date"
+                    value={formData.expiryDate || ''}
+                    onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 font-semibold focus:outline-none focus:border-[#FF7A00]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-gray-700 block mb-1">Batas Kuota Pemakaian</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.usageLimit || 0}
+                    onChange={(e) => setFormData({ ...formData, usageLimit: e.target.value })}
+                    placeholder="0 = Tanpa Kuota"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 font-semibold focus:outline-none focus:border-[#FF7A00]"
                   />
                 </div>
               </div>

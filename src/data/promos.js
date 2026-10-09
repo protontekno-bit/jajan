@@ -66,43 +66,98 @@ export const DEFAULT_PROMOS = [
 ];
 
 /**
- * Validates a coupon code against subtotal and delivery fee.
- * @param {string} rawCode
- * @param {number} subtotal
- * @param {number} [deliveryFee=0]
- * @param {Array} [promoList=DEFAULT_PROMOS]
+ * Validates a coupon code or promo object against subtotal, delivery fee, and cart items.
+ * Supports direct coupon codes, auto-promo by ID, expiry date validation, and minimum spend.
+ *
+ * @param {string|Object} rawIdentifier - Coupon code string or promo object / id
+ * @param {number} subtotal - Cart subtotal amount
+ * @param {number} [deliveryFee=0] - Current delivery fee
+ * @param {Array} [promoList=DEFAULT_PROMOS] - Active promos list
+ * @param {Array} [cartItems=[]] - Items currently in cart
  * @returns {{ valid: boolean, message: string, discount: number, coupon: Object|null }}
  */
-export const evaluateCoupon = (rawCode, subtotal, deliveryFee = 0, promoList = DEFAULT_PROMOS) => {
-  if (!rawCode || !rawCode.trim()) {
-    return { valid: false, message: 'Masukkan kode kupon terlebih dahulu.', discount: 0, coupon: null };
+export const evaluateCoupon = (
+  rawIdentifier,
+  subtotal,
+  deliveryFee = 0,
+  promoList = DEFAULT_PROMOS,
+  cartItems = []
+) => {
+  if (!rawIdentifier) {
+    return { valid: false, message: 'Pilih atau masukkan kode kupon terlebih dahulu.', discount: 0, coupon: null };
   }
 
-  const cleanCode = rawCode.trim().toUpperCase();
-  // Find active coupon with matching code
-  const promo = (promoList || DEFAULT_PROMOS).find(
-    (p) => p.isActive && p.code && p.code.trim().toUpperCase() === cleanCode
-  );
+  const cleanQuery = typeof rawIdentifier === 'string' ? rawIdentifier.trim().toUpperCase() : '';
+  const promo = (promoList || DEFAULT_PROMOS).find((p) => {
+    if (!p.isActive) return false;
+    if (typeof rawIdentifier === 'object' && rawIdentifier.id) {
+      return String(p.id) === String(rawIdentifier.id);
+    }
+    if (String(p.id) === String(rawIdentifier)) return true;
+    return p.code && p.code.trim().toUpperCase() === cleanQuery;
+  });
 
   if (!promo) {
     return {
       valid: false,
-      message: `Kode kupon "${cleanCode}" tidak aktif atau tidak ditemukan.`,
+      message: `Kupon "${cleanQuery || 'Pilihan'}" tidak aktif atau tidak ditemukan.`,
       discount: 0,
       coupon: null,
     };
   }
 
-  const minOrder = Number(promo.minOrder) || 0;
-  if (subtotal < minOrder) {
+  // 1. Cek masa berlaku tanggal kedaluwarsa (format YYYY-MM-DD jika diisi)
+  if (promo.expiryDate) {
+    const exp = new Date(promo.expiryDate);
+    exp.setHours(23, 59, 59, 999);
+    if (!isNaN(exp.getTime()) && Date.now() > exp.getTime()) {
+      return {
+        valid: false,
+        message: `Masa berlaku promo "${promo.title}" telah berakhir.`,
+        discount: 0,
+        coupon: null,
+      };
+    }
+  }
+
+  // 2. Cek kuota pemakaian (jika disetel batas kuota)
+  if (promo.usageLimit && promo.usageCount && Number(promo.usageCount) >= Number(promo.usageLimit)) {
     return {
       valid: false,
-      message: `Minimal belanja Rp ${minOrder.toLocaleString('id-ID')} untuk menggunakan kupon ${promo.code}.`,
+      message: `Kuota pemakaian kupon "${promo.code || promo.title}" sudah habis.`,
       discount: 0,
       coupon: null,
     };
   }
 
+  // 3. Cek syarat minimal belanja
+  const minOrder = Number(promo.minOrder) || 0;
+  if (subtotal < minOrder) {
+    const shortage = minOrder - subtotal;
+    return {
+      valid: false,
+      message: `Min. belanja Rp ${minOrder.toLocaleString('id-ID')} untuk promo ${promo.code || promo.title}. Kurang Rp ${shortage.toLocaleString('id-ID')}.`,
+      discount: 0,
+      coupon: null,
+    };
+  }
+
+  // 4. Cek cakupan kategori khusus (opsional)
+  if (promo.targetCategory && promo.targetCategory !== 'all' && Array.isArray(cartItems) && cartItems.length > 0) {
+    const hasCategoryItem = cartItems.some(
+      (item) => item.category === promo.targetCategory || item.product?.category === promo.targetCategory
+    );
+    if (!hasCategoryItem) {
+      return {
+        valid: false,
+        message: `Promo ini hanya berlaku untuk pesanan menu kategori khusus.`,
+        discount: 0,
+        coupon: null,
+      };
+    }
+  }
+
+  // 5. Kalkulasi diskon sesuai tipe promo
   let calculatedDiscount = 0;
   if (promo.discountType === 'percentage') {
     const rawDiscount = (subtotal * (Number(promo.discountValue) || 0)) / 100;
@@ -116,7 +171,7 @@ export const evaluateCoupon = (rawCode, subtotal, deliveryFee = 0, promoList = D
 
   return {
     valid: true,
-    message: `Kupon "${promo.code}" berhasil diterapkan! Hemat Rp ${calculatedDiscount.toLocaleString('id-ID')}`,
+    message: `Promo "${promo.code || promo.title}" berhasil diterapkan! Hemat Rp ${calculatedDiscount.toLocaleString('id-ID')}`,
     discount: calculatedDiscount,
     coupon: promo,
   };

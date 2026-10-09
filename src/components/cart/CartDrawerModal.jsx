@@ -16,6 +16,11 @@ import {
   Navigation,
   Compass,
   Loader2,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  Percent,
+  Truck,
 } from 'lucide-react';
 import { formatRupiah } from '../../utils/currency.js';
 import { APP_CONFIG } from '../../config/constants.js';
@@ -83,6 +88,7 @@ export const CartDrawerModal = ({
   const [couponCodeInput, setCouponCodeInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponFeedback, setCouponFeedback] = useState(null);
+  const [isVoucherListOpen, setIsVoucherListOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -176,10 +182,11 @@ export const CartDrawerModal = ({
 
   if (appliedCoupon) {
     if (appliedCoupon.discountType === 'percentage') {
-      const raw = (totalPrice * appliedCoupon.discountValue) / 100;
-      discountAmount = Math.min(raw, appliedCoupon.maxDiscount);
+      const raw = Math.round((totalPrice * (Number(appliedCoupon.discountValue) || 0)) / 100);
+      const cap = Number(appliedCoupon.maxDiscount) || 0;
+      discountAmount = cap > 0 ? Math.min(raw, cap) : raw;
     } else if (appliedCoupon.discountType === 'fixed') {
-      discountAmount = Math.min(appliedCoupon.discountValue, totalPrice);
+      discountAmount = Math.min(Number(appliedCoupon.discountValue) || 0, totalPrice);
     } else if (appliedCoupon.discountType === 'shipping') {
       discountAmount = initialDeliveryFee;
       effectiveDeliveryFee = 0;
@@ -192,17 +199,18 @@ export const CartDrawerModal = ({
   );
   const progressToFree = Math.min(100, (totalPrice / APP_CONFIG.freeDeliveryThreshold) * 100);
 
-  // Apply Coupon Handler
-  const handleApplyCoupon = (code = couponCodeInput) => {
-    if (!code || !code.trim()) {
-      setCouponFeedback({ type: 'error', text: 'Masukkan kode kupon terlebih dahulu.' });
+  // Apply Coupon Handler (mendukung kode teks ATAU objek promo langsung)
+  const handleApplyCoupon = (identifier = couponCodeInput) => {
+    if (!identifier || (typeof identifier === 'string' && !identifier.trim())) {
+      setCouponFeedback({ type: 'error', text: 'Masukkan kode atau pilih kupon terlebih dahulu.' });
       return;
     }
-    const res = evaluateCoupon(code, totalPrice, initialDeliveryFee, availableCoupons);
+    const res = evaluateCoupon(identifier, totalPrice, initialDeliveryFee, availableCoupons, cart);
     if (res.valid) {
       setAppliedCoupon(res.coupon);
-      setCouponCodeInput(res.coupon.code);
+      setCouponCodeInput(res.coupon.code || '');
       setCouponFeedback({ type: 'success', text: res.message });
+      setIsVoucherListOpen(false);
     } else {
       setAppliedCoupon(null);
       setCouponFeedback({ type: 'error', text: res.message });
@@ -837,41 +845,118 @@ export const CartDrawerModal = ({
                 <div className="flex items-center justify-between">
                   <h5 className="text-xs font-extrabold text-gray-700 flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5 text-[#FF7A00]" />
-                    Punya Kupon Diskon?
+                    Voucher & Promo Hemat
                   </h5>
-                  {appliedCoupon && (
+                  {appliedCoupon ? (
                     <button
                       type="button"
                       onClick={handleRemoveCoupon}
                       className="text-[11px] text-red-500 font-bold hover:underline cursor-pointer"
                     >
-                      Hapus Kupon
+                      Hapus Voucher
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsVoucherListOpen(!isVoucherListOpen)}
+                      className="text-[11px] text-[#FF7A00] font-bold hover:underline cursor-pointer inline-flex items-center gap-0.5"
+                    >
+                      <span>{isVoucherListOpen ? 'Tutup Pilihan' : 'Lihat Semua Promo'}</span>
+                      {isVoucherListOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                     </button>
                   )}
                 </div>
 
                 {appliedCoupon ? (
                   <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs animate-in zoom-in-95">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black flex-shrink-0 shadow-2xs">
                         <Check className="w-4 h-4" />
                       </div>
                       <div>
-                        <p className="font-black text-emerald-900 leading-tight">
-                          {appliedCoupon.code} • Hemat {formatRupiah(discountAmount)}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-black text-emerald-900 leading-tight">
+                            {appliedCoupon.code || appliedCoupon.title}
+                          </span>
+                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-md">
+                            Hemat {formatRupiah(discountAmount)}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-700 font-medium mt-0.5">
+                          {appliedCoupon.subtitle || appliedCoupon.title}
                         </p>
-                        <p className="text-[10px] text-emerald-700 font-medium">{appliedCoupon.title}</p>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
+                    {/* Quick Apply Voucher Cards Accordion */}
+                    {isVoucherListOpen && availableCoupons.filter((cp) => cp.isActive !== false).length > 0 && (
+                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1 animate-in fade-in duration-150">
+                        {availableCoupons
+                          .filter((cp) => cp.isActive !== false)
+                          .map((cp) => {
+                            const minOrder = Number(cp.minOrder) || 0;
+                            const isEligible = totalPrice >= minOrder;
+                            const shortage = Math.max(0, minOrder - totalPrice);
+
+                            return (
+                              <div
+                                key={cp.id || cp.code}
+                                className={`p-2.5 rounded-2xl border text-xs transition-all flex items-center justify-between gap-2.5 ${
+                                  isEligible
+                                    ? 'bg-orange-50/40 border-orange-200 hover:border-[#FF7A00]'
+                                    : 'bg-gray-50/70 border-gray-200 opacity-80'
+                                }`}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                                    <span className="text-[10px] font-black uppercase tracking-wider bg-orange-100 text-[#FF7A00] px-1.5 py-0.2 rounded">
+                                      {cp.tag || (cp.discountType === 'shipping' ? 'Ongkir' : 'Diskon')}
+                                    </span>
+                                    {cp.code && (
+                                      <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-100 px-1 rounded">
+                                        {cp.code}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="font-extrabold text-gray-800 text-xs truncate">
+                                    {cp.title}
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 line-clamp-1">
+                                    Min. belanja {formatRupiah(minOrder)}
+                                    {cp.validUntil ? ` • ${cp.validUntil}` : ''}
+                                  </p>
+                                </div>
+
+                                <div className="flex-shrink-0">
+                                  {isEligible ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleApplyCoupon(cp)}
+                                      className="px-3 py-1.5 rounded-xl bg-[#FF7A00] hover:bg-[#e06c00] text-white font-bold text-xs shadow-2xs btn-bounce cursor-pointer transition-all"
+                                    >
+                                      Pakai
+                                    </button>
+                                  ) : (
+                                    <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg block text-center">
+                                      Kurang {formatRupiah(shortage)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+
+                    {/* Manual Coupon Code Input Field */}
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
                         value={couponCodeInput}
                         onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
-                        placeholder="Ketik kode kupon (misal: BELIYUK50)"
+                        placeholder="Punya kode kupon? (misal: BELIYUK50)"
                         className="flex-1 px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs font-bold uppercase focus:outline-none focus:border-[#FF7A00]"
                       />
                       <button
@@ -883,10 +968,10 @@ export const CartDrawerModal = ({
                       </button>
                     </div>
 
-                    {/* Kupon Rekomendasi Cepat */}
-                    {availableCoupons.filter((cp) => cp.code && cp.isActive !== false).length > 0 && (
+                    {/* Saran Kupon Ringkas Jika Accordion Tertutup */}
+                    {!isVoucherListOpen && availableCoupons.filter((cp) => cp.code && cp.isActive !== false).length > 0 && (
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] text-gray-400 font-medium">Saran:</span>
+                        <span className="text-[10px] text-gray-400 font-medium">Saran Cepat:</span>
                         {availableCoupons
                           .filter((cp) => cp.code && cp.isActive !== false)
                           .slice(0, 4)
@@ -894,7 +979,7 @@ export const CartDrawerModal = ({
                             <button
                               key={cp.code}
                               type="button"
-                              onClick={() => handleApplyCoupon(cp.code)}
+                              onClick={() => handleApplyCoupon(cp)}
                               className="px-2 py-0.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-[#FF7A00] border border-orange-200 text-[10px] font-bold cursor-pointer transition-colors"
                             >
                               {cp.code}

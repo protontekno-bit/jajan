@@ -27,16 +27,40 @@ export const usePromos = () => {
     }
   });
 
-  // 1. Sync state to localStorage
+  // 1. Sync state to localStorage & broadcast event locally
   useEffect(() => {
     try {
       localStorage.setItem(APP_CONFIG.storageKeys.promos, JSON.stringify(promosList));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('beliyuk:promos_updated'));
+      }
     } catch (e) {
       console.error('Failed to sync promos to localStorage:', e);
     }
   }, [promosList]);
 
-  // 2. Real-time Firebase Cloud Firestore Listener
+  // 2. Real-time Multi-Tab Storage Listener
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === APP_CONFIG.storageKeys.promos && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setPromosList(parsed);
+          }
+        } catch (err) {
+          console.warn('Error syncing promos from storage event:', err);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // 3. Real-time Firebase Cloud Firestore Listener
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
 
