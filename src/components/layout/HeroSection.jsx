@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, X, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
-import { DEFAULT_HERO_SLIDES } from '../../data/heroSlides.js';
+import { DEFAULT_HERO_SLIDES, HERO_COLOR_THEMES } from '../../data/heroSlides.js';
 
 /**
  * High-Performance, Mobile-Gesture Aware Hero Carousel Section.
  * Built with zero bloated dependencies (~2 KB gzipped), pure React & hardware-accelerated CSS.
  * Features:
  * - Autoplay with pause-on-hover / pause-on-touch
- * - Touch swipe gestures for mobile smartphones
+ * - Touch swipe gestures with anti-accidental scroll protection
  * - Direct category filtering CTA ("Lihat Menu Ini")
- * - Image preloading & lazy loading optimization
+ * - Dynamic spotlight themes (Warm Orange, Fresh Emerald, Cool Blue, etc.)
+ * - 3D floating food commercial visual with crisp contrast
  * - Search bar with instant filter integration
  *
  * @param {Object} props
@@ -28,9 +29,20 @@ export const HeroSection = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
 
   const safeIndex = currentIndex >= slides.length ? 0 : currentIndex;
   const currentSlide = slides[safeIndex] || slides[0];
+
+  // Resolve dynamic color theme
+  const themeKey =
+    currentSlide.colorTheme ||
+    (currentSlide.targetCategory === 'healthy_food'
+      ? 'emerald'
+      : currentSlide.targetCategory === 'minuman'
+        ? 'blue'
+        : 'orange');
+  const currentTheme = HERO_COLOR_THEMES[themeKey] || HERO_COLOR_THEMES.orange;
 
   const nextSlide = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % slides.length);
@@ -54,23 +66,37 @@ export const HeroSection = ({
     return () => clearInterval(timer);
   }, [isPaused, slides.length, nextSlide]);
 
-  // Mobile Touch Swipe Handlers
+  // Mobile Touch Swipe Handlers with Anti-Accidental Scroll Guard
   const handleTouchStart = (e) => {
+    if (!e.touches?.[0]) return;
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
     setIsPaused(true);
   };
 
   const handleTouchEnd = (e) => {
-    if (touchStartX.current === null) return;
-    const diff = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(diff) > 40) {
-      if (diff > 0) {
-        prevSlide();
-      } else {
-        nextSlide();
+    if (touchStartX.current === null || touchStartY.current === null) {
+      setIsPaused(false);
+      return;
+    }
+    const touch = e.changedTouches?.[0];
+    if (touch) {
+      const diffX = touch.clientX - touchStartX.current;
+      const diffY = touch.clientY - touchStartY.current;
+
+      // Anti-accidental swipe: hanya picu jika perpindahan horizontal dominan
+      // (diffX > 45px dan minimal 1.4x lebih besar dari perpindahan vertikal)
+      // Ini mencegah pergantian banner saat pelanggan sedang scroll halaman ke bawah
+      if (Math.abs(diffX) > 45 && Math.abs(diffX) > Math.abs(diffY) * 1.4) {
+        if (diffX > 0) {
+          prevSlide();
+        } else {
+          nextSlide();
+        }
       }
     }
     touchStartX.current = null;
+    touchStartY.current = null;
     setIsPaused(false);
   };
 
@@ -100,7 +126,9 @@ export const HeroSection = ({
       {/* Top Bar on Mobile & Desktop: Category Badge, Slide Counter & Quick Nav */}
       <div className="relative z-10 flex items-center justify-between gap-2 mb-2 sm:mb-3">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-orange-50 text-[#FF7A00] border border-orange-200/60 transition-all duration-300">
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold transition-all duration-300 ${currentTheme.badgeClass}`}
+          >
             {currentSlide.badge || '✨ Pilihan Spesial Beliyuk'}
           </span>
 
@@ -137,7 +165,7 @@ export const HeroSection = ({
       {/* Main Content Area: Side-by-Side on BOTH Mobile (<640px) and Desktop (>=640px) */}
       <div className="relative z-10 flex flex-row items-center justify-between gap-2.5 sm:gap-6">
         {/* Left Column: Headline, Subtitle, CTA */}
-        <div className="w-[58%] sm:w-7/12 text-left">
+        <div className="w-[56%] sm:w-7/12 text-left">
           {/* Headline */}
           <h2 className="text-sm sm:text-2xl md:text-3xl font-black mb-1 sm:mb-2 leading-snug sm:leading-snug text-gray-800 transition-opacity duration-300 line-clamp-2 sm:line-clamp-none">
             {currentSlide.title}
@@ -153,7 +181,7 @@ export const HeroSection = ({
             <button
               type="button"
               onClick={handleSlideCtaClick}
-              className="inline-flex px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#FF9800] text-white font-bold text-[10px] sm:text-xs shadow-md shadow-orange-500/20 hover:brightness-105 active:scale-95 transition-all items-center gap-1 sm:gap-1.5 cursor-pointer whitespace-nowrap"
+              className={`inline-flex px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-full bg-gradient-to-r ${currentTheme.btnGradient} text-white font-bold text-[10px] sm:text-xs shadow-md shadow-orange-500/20 hover:brightness-105 active:scale-95 transition-all items-center gap-1 sm:gap-1.5 cursor-pointer whitespace-nowrap`}
               title={`Lihat menu ${currentSlide.targetCategory}`}
             >
               <span>{currentSlide.ctaText}</span>
@@ -163,7 +191,7 @@ export const HeroSection = ({
         </div>
 
         {/* Right Column: 3D Commercial Food Stage */}
-        <div className="w-[42%] sm:w-5/12 max-w-xs relative flex flex-col items-center justify-center">
+        <div className="w-[44%] sm:w-5/12 max-w-xs relative flex flex-col items-center justify-center">
           <div
             className="relative group cursor-pointer w-full flex flex-col items-center justify-center select-none"
             onClick={handleSlideCtaClick}
@@ -172,22 +200,10 @@ export const HeroSection = ({
             {/* 3D Radial Spotlight Glow Behind Product */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div
-                className={`w-28 sm:w-52 h-28 sm:h-52 rounded-full blur-xl sm:blur-2xl transition-all duration-700 ${
-                  currentSlide.targetCategory === 'healthy_food'
-                    ? 'bg-gradient-to-tr from-emerald-400/35 to-teal-400/20'
-                    : currentSlide.targetCategory === 'minuman'
-                      ? 'bg-gradient-to-tr from-sky-400/35 to-blue-500/20'
-                      : 'bg-gradient-to-tr from-[#FF7A00]/30 to-[#FFC107]/25'
-                }`}
+                className={`w-32 sm:w-56 h-32 sm:h-56 rounded-full blur-xl sm:blur-2xl transition-all duration-700 ${currentTheme.spotlightClass}`}
               />
               <div
-                className={`w-24 sm:w-44 h-24 sm:h-44 rounded-full border border-white/80 shadow-inner blur-xs transition-all duration-700 ${
-                  currentSlide.targetCategory === 'healthy_food'
-                    ? 'bg-emerald-500/10 border-emerald-300/40'
-                    : currentSlide.targetCategory === 'minuman'
-                      ? 'bg-sky-500/10 border-sky-300/40'
-                      : 'bg-orange-500/10 border-orange-300/40'
-                }`}
+                className={`w-24 sm:w-44 h-24 sm:h-44 rounded-full border shadow-inner blur-xs transition-all duration-700 ${currentTheme.ringClass}`}
               />
             </div>
 
@@ -199,11 +215,15 @@ export const HeroSection = ({
                 alt={currentSlide.title}
                 fetchPriority={safeIndex === 0 ? 'high' : 'auto'}
                 loading={safeIndex === 0 ? 'eager' : 'lazy'}
-                className="max-h-24 sm:max-h-48 w-auto max-w-full object-contain drop-shadow-[0_16px_22px_rgba(0,0,0,0.22)] animate-float-3d group-hover:scale-108 transition-all duration-500 ease-out mix-blend-multiply"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = '/images/hero_roti_bakar_3d.jpg';
+                }}
+                className="max-h-32 sm:max-h-48 md:max-h-52 w-auto max-w-full object-contain drop-shadow-[0_16px_24px_rgba(0,0,0,0.22)] animate-float-3d group-hover:scale-108 transition-all duration-500 ease-out"
               />
 
               {/* Realistic Oval Contact Shadow with Pulsing Keyframe */}
-              <div className="w-20 sm:w-44 h-2 sm:h-4 bg-radial from-black/32 via-black/12 to-transparent rounded-full blur-[2px] mt-1 sm:mt-1.5 animate-shadow-pulse pointer-events-none" />
+              <div className="w-24 sm:w-44 h-2 sm:h-4 bg-radial from-black/32 via-black/12 to-transparent rounded-full blur-[2px] mt-1 sm:mt-1.5 animate-shadow-pulse pointer-events-none" />
             </div>
 
             {/* Floating 3D Micro-Badge */}

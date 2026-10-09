@@ -18,6 +18,57 @@
  * @property {number} order - Display sequence
  */
 
+/**
+ * Preset Tema Warna Spotlight & Aksen untuk Slide Hero
+ */
+export const HERO_COLOR_THEMES = {
+  orange: {
+    id: 'orange',
+    label: 'Warm Orange (Roti Bakar & Cemilan)',
+    spotlightClass: 'bg-gradient-to-tr from-[#FF7A00]/30 to-[#FFC107]/25',
+    ringClass: 'bg-orange-500/10 border-orange-300/40',
+    badgeClass: 'bg-orange-50 text-[#FF7A00] border-orange-200/60',
+    btnGradient: 'from-[#FF7A00] to-[#FF9800]',
+    dotColor: '#FF7A00',
+  },
+  emerald: {
+    id: 'emerald',
+    label: 'Fresh Emerald (Healthy Food & Diet)',
+    spotlightClass: 'bg-gradient-to-tr from-emerald-400/35 to-teal-400/20',
+    ringClass: 'bg-emerald-500/10 border-emerald-300/40',
+    badgeClass: 'bg-emerald-50 text-emerald-600 border-emerald-200/60',
+    btnGradient: 'from-emerald-500 to-teal-600',
+    dotColor: '#10B981',
+  },
+  blue: {
+    id: 'blue',
+    label: 'Cool Sky Blue (Minuman & Es Dingin)',
+    spotlightClass: 'bg-gradient-to-tr from-sky-400/35 to-blue-500/20',
+    ringClass: 'bg-sky-500/10 border-sky-300/40',
+    badgeClass: 'bg-blue-50 text-blue-600 border-blue-200/60',
+    btnGradient: 'from-sky-500 to-blue-600',
+    dotColor: '#0EA5E9',
+  },
+  purple: {
+    id: 'purple',
+    label: 'Royal Purple (Promo & Spesial)',
+    spotlightClass: 'bg-gradient-to-tr from-purple-400/35 to-pink-500/20',
+    ringClass: 'bg-purple-500/10 border-purple-300/40',
+    badgeClass: 'bg-purple-50 text-purple-600 border-purple-200/60',
+    btnGradient: 'from-purple-500 to-pink-600',
+    dotColor: '#A855F7',
+  },
+  amber: {
+    id: 'amber',
+    label: 'Golden Honey (Best Seller)',
+    spotlightClass: 'bg-gradient-to-tr from-amber-400/35 to-yellow-500/20',
+    ringClass: 'bg-amber-500/10 border-amber-300/40',
+    badgeClass: 'bg-amber-50 text-amber-600 border-amber-200/60',
+    btnGradient: 'from-amber-500 to-yellow-600',
+    dotColor: '#F59E0B',
+  },
+};
+
 /** @type {HeroSlide[]} */
 export const DEFAULT_HERO_SLIDES = [
   {
@@ -30,6 +81,7 @@ export const DEFAULT_HERO_SLIDES = [
     targetCategory: 'roti_bakar',
     ctaText: 'Pesan Roti Bakar 🥪',
     floatingBadge: '⭐ 4.9 Nutella & Keju Lumer',
+    colorTheme: 'orange',
     isActive: true,
     order: 0,
   },
@@ -43,6 +95,7 @@ export const DEFAULT_HERO_SLIDES = [
     targetCategory: 'healthy_food',
     ctaText: 'Lihat Menu Sehat 🥗',
     floatingBadge: '🥗 100% Bergizi & Segar',
+    colorTheme: 'emerald',
     isActive: true,
     order: 1,
   },
@@ -56,6 +109,7 @@ export const DEFAULT_HERO_SLIDES = [
     targetCategory: 'minuman',
     ctaText: 'Pilih Minuman Segar 🥤',
     floatingBadge: '❄️ Segar & Dingin Pas',
+    colorTheme: 'blue',
     isActive: true,
     order: 2,
   },

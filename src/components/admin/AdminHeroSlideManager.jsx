@@ -14,14 +14,16 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import { compressImageFile } from '../../utils/imageCompressor.js';
+import { HERO_COLOR_THEMES } from '../../data/heroSlides.js';
 
 const DEFAULT_FORM_STATE = {
   id: '',
   badge: '✨ Pilihan Spesial',
   title: '',
   subtitle: '',
-  img: 'https://images.unsplash.com/photo-1584776296944-ab6fb57b0bdd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+  img: '/images/hero_roti_bakar_3d.jpg',
   targetCategory: 'all',
+  colorTheme: 'orange',
   ctaText: 'Lihat Menu',
   floatingBadge: '',
   isActive: true,
@@ -287,6 +289,15 @@ export const AdminHeroSlideManager = ({
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
                       Arah: {getCategoryLabel(slide.targetCategory)}
                     </span>
+                    {slide.colorTheme && HERO_COLOR_THEMES[slide.colorTheme] && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-50 text-gray-600 border border-gray-200">
+                        <span
+                          className="w-2 h-2 rounded-full inline-block"
+                          style={{ backgroundColor: HERO_COLOR_THEMES[slide.colorTheme].dotColor }}
+                        />
+                        <span>{HERO_COLOR_THEMES[slide.colorTheme].label.split('(')[0].trim()}</span>
+                      </span>
+                    )}
                   </div>
 
                   <h4 className="text-sm sm:text-base font-black text-gray-800 truncate">
@@ -461,6 +472,36 @@ export const AdminHeroSlideManager = ({
                 </div>
               </div>
 
+              {/* Theme Color Selector */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Tema Warna Spotlight & Aksen (Panggung 3D)
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {Object.values(HERO_COLOR_THEMES).map((thm) => {
+                    const isSelected = (formData.colorTheme || 'orange') === thm.id;
+                    return (
+                      <button
+                        key={thm.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, colorTheme: thm.id })}
+                        className={`flex items-center gap-2 px-2.5 py-2 rounded-2xl border text-left text-xs font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-[#FF7A00] bg-orange-50/70 text-gray-900 shadow-xs ring-1 ring-[#FF7A00]'
+                            : 'border-gray-200 bg-gray-50/50 hover:bg-gray-100/70 text-gray-600'
+                        }`}
+                      >
+                        <span
+                          className="w-3.5 h-3.5 rounded-full flex-shrink-0 shadow-xs"
+                          style={{ backgroundColor: thm.dotColor }}
+                        />
+                        <span className="truncate text-[11px]">{thm.label.split('(')[0].trim()}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Floating Badge on Image */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
@@ -522,7 +563,7 @@ export const AdminHeroSlideManager = ({
                   value={formData.img}
                   onChange={(e) => setFormData({ ...formData, img: e.target.value })}
                   placeholder="https://... atau /images/..."
-                  className="w-full px-3.5 py-2 rounded-2xl bg-gray-50 border border-gray-200 text-xs font-mono focus:outline-none focus:border-[#FF7A00]"
+                  className="w-full px-3.5 py-2.5 rounded-2xl bg-gray-50 border border-gray-200 text-xs font-mono focus:outline-none focus:border-[#FF7A00]"
                 />
 
                 {compressionInfo && (
@@ -531,19 +572,60 @@ export const AdminHeroSlideManager = ({
                   </p>
                 )}
 
-                {/* Live Preview Box */}
+                {/* Live 3D Interactive Stage Preview Box */}
                 {formData.img && (
-                  <div className="relative mt-2 h-36 rounded-2xl overflow-hidden border border-gray-200 bg-gray-100">
-                    <img
-                      src={formData.img}
-                      alt="Pratinjau Slide"
-                      className="w-full h-full object-cover"
-                    />
-                    {formData.floatingBadge && (
-                      <div className="absolute bottom-2 left-2 bg-white/95 px-2.5 py-1 rounded-xl text-[10px] font-bold text-gray-800 shadow-sm border border-orange-100">
-                        {formData.floatingBadge}
+                  <div className="relative mt-3 p-3.5 rounded-3xl overflow-hidden border border-orange-200/60 bg-gradient-to-b from-gray-50 to-white shadow-xs">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 flex items-center gap-1">
+                        📱 Pratinjau Tampilan Panggung 3D Mobile
+                      </span>
+                      <span className="text-[9px] font-bold text-[#FF7A00] bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200/50">
+                        Simulasi Nyata
+                      </span>
+                    </div>
+
+                    {/* Mini 3D Stage Box */}
+                    <div className="relative h-44 w-full flex flex-col items-center justify-center overflow-hidden rounded-2xl bg-white border border-gray-100 shadow-inner">
+                      {/* Dynamic Spotlight Glow */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div
+                          className={`w-36 h-36 rounded-full blur-xl transition-all duration-500 ${
+                            HERO_COLOR_THEMES[formData.colorTheme || 'orange']?.spotlightClass ||
+                            'bg-gradient-to-tr from-[#FF7A00]/30 to-[#FFC107]/25'
+                          }`}
+                        />
+                        <div
+                          className={`w-28 h-28 rounded-full border shadow-inner blur-xs transition-all duration-500 ${
+                            HERO_COLOR_THEMES[formData.colorTheme || 'orange']?.ringClass ||
+                            'bg-orange-500/10 border-orange-300/40'
+                          }`}
+                        />
                       </div>
-                    )}
+
+                      {/* 3D Floating Product with Fallback */}
+                      <div className="relative z-10 flex flex-col items-center justify-center">
+                        <img
+                          src={formData.img}
+                          alt="Pratinjau Makanan 3D"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/images/hero_roti_bakar_3d.jpg';
+                          }}
+                          className="max-h-24 sm:max-h-28 w-auto max-w-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.22)] animate-float-3d"
+                        />
+                        <div className="w-24 h-2 bg-radial from-black/30 via-black/10 to-transparent rounded-full blur-[2px] mt-1 animate-shadow-pulse pointer-events-none" />
+                      </div>
+
+                      {/* Floating Badge in Preview */}
+                      {formData.floatingBadge && (
+                        <div className="absolute bottom-2 left-2 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-extrabold text-gray-800 shadow-md border border-white/90">
+                          {formData.floatingBadge}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-gray-400 text-center mt-2">
+                      Gunakan foto berlatar transparan (PNG/WebP) agar bayangan dan efek melayang tampak natural.
+                    </p>
                   </div>
                 )}
               </div>

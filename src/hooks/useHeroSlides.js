@@ -10,6 +10,24 @@ import {
 } from '../services/firebase.js';
 
 /**
+ * Helper to normalize slide items with colorTheme and safe defaults
+ */
+const normalizeSlide = (slide) => {
+  let colorTheme = slide.colorTheme;
+  if (!colorTheme) {
+    if (slide.targetCategory === 'healthy_food') colorTheme = 'emerald';
+    else if (slide.targetCategory === 'minuman') colorTheme = 'blue';
+    else colorTheme = 'orange';
+  }
+  return {
+    ...slide,
+    colorTheme,
+    order: slide.order ?? 0,
+    isActive: slide.isActive !== false,
+  };
+};
+
+/**
  * Custom hook to manage dynamic Hero Banner slides with real-time Firebase
  * synchronization and fast offline localStorage persistence.
  */
@@ -21,26 +39,27 @@ export const useHeroSlides = () => {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const existingIds = new Set(parsed.map((s) => String(s.id)));
+          const normalized = parsed.map(normalizeSlide);
+          const existingIds = new Set(normalized.map((s) => String(s.id)));
           const missingDefaults = DEFAULT_HERO_SLIDES.filter(
             (s) => !existingIds.has(String(s.id))
           );
           if (missingDefaults.length > 0) {
-            const merged = [...parsed, ...missingDefaults];
+            const merged = [...normalized, ...missingDefaults.map(normalizeSlide)];
             merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
             localStorage.setItem(APP_CONFIG.storageKeys.heroSlides, JSON.stringify(merged));
             return merged;
           }
-          return parsed;
+          return normalized;
         }
       }
-      return DEFAULT_HERO_SLIDES;
+      return DEFAULT_HERO_SLIDES.map(normalizeSlide);
     } catch {
-      return DEFAULT_HERO_SLIDES;
+      return DEFAULT_HERO_SLIDES.map(normalizeSlide);
     }
   });
 
-  // 2. Sync to localStorage whenever slidesList changes
+  // 2. Sync to localStorage whenever slidesList changes and broadcast custom event
   useEffect(() => {
     try {
       localStorage.setItem(APP_CONFIG.storageKeys.heroSlides, JSON.stringify(slidesList));
@@ -48,6 +67,25 @@ export const useHeroSlides = () => {
       console.warn('Failed to sync hero slides to localStorage:', e);
     }
   }, [slidesList]);
+
+  // 3. Multi-Tab Real-time Synchronizer (Storage event)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === APP_CONFIG.storageKeys.heroSlides && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSlidesList(parsed.map(normalizeSlide));
+          }
+        } catch (err) {
+          console.warn('Error parsing updated hero slides from storage event:', err);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // 3. Real-time Firestore Cloud listener
   useEffect(() => {
@@ -62,21 +100,21 @@ export const useHeroSlides = () => {
           );
 
           if (missingDefaults.length > 0) {
-            const merged = [...cloudSlides, ...missingDefaults];
+            const merged = [...cloudSlides.map(normalizeSlide), ...missingDefaults.map(normalizeSlide)];
             merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
             setSlidesList(merged);
             // Auto-persist missing default slides to Cloud Firestore
             missingDefaults.forEach((slide) => {
-              saveHeroSlideToCloud(slide).catch((err) =>
+              saveHeroSlideToCloud(normalizeSlide(slide)).catch((err) =>
                 console.warn(`Failed to auto-sync slide ${slide.id} to cloud:`, err)
               );
             });
           } else {
-            setSlidesList(cloudSlides);
+            setSlidesList(cloudSlides.map(normalizeSlide));
           }
         } else if (cloudSlides === null) {
           // Empty collection in Firestore, auto-seed defaults
-          seedHeroSlidesToCloud(DEFAULT_HERO_SLIDES).catch((err) => {
+          seedHeroSlidesToCloud(DEFAULT_HERO_SLIDES.map(normalizeSlide)).catch((err) => {
             console.warn('Auto-seed hero slides to Firestore failed:', err);
           });
         }
@@ -100,18 +138,19 @@ export const useHeroSlides = () => {
   // Admin Actions:
   const addSlide = useCallback(
     async (newSlide) => {
-      const slideItem = {
+      const slideItem = normalizeSlide({
         id: newSlide.id || `slide-${Date.now()}`,
         badge: newSlide.badge || '✨ Pilihan Spesial',
         title: newSlide.title || 'Menu Favorit Beliyuk',
         subtitle: newSlide.subtitle || '',
-        img: newSlide.img || '/images/sandwich_gandum_ayam.jpg',
+        img: newSlide.img || '/images/hero_roti_bakar_3d.jpg',
         targetCategory: newSlide.targetCategory || 'all',
+        colorTheme: newSlide.colorTheme,
         ctaText: newSlide.ctaText || 'Lihat Menu',
         floatingBadge: newSlide.floatingBadge || '',
         isActive: true,
         order: slidesList.length,
-      };
+      });
 
       setSlidesList((prev) => [...prev, slideItem]);
       if (isFirebaseConfigured()) {
@@ -127,7 +166,7 @@ export const useHeroSlides = () => {
     setSlidesList((prev) =>
       prev.map((s) => {
         if (s.id === slideId) {
-          finalSlide = { ...s, ...updatedFields };
+          finalSlide = normalizeSlide({ ...s, ...updatedFields });
           return finalSlide;
         }
         return s;
@@ -185,9 +224,10 @@ export const useHeroSlides = () => {
   );
 
   const resetSlidesToDefault = useCallback(async () => {
-    setSlidesList(DEFAULT_HERO_SLIDES);
+    const normalizedDefaults = DEFAULT_HERO_SLIDES.map(normalizeSlide);
+    setSlidesList(normalizedDefaults);
     if (isFirebaseConfigured()) {
-      await seedHeroSlidesToCloud(DEFAULT_HERO_SLIDES);
+      await seedHeroSlidesToCloud(normalizedDefaults);
     }
   }, []);
 
