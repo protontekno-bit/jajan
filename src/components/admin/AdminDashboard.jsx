@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Store,
   SlidersHorizontal,
@@ -351,24 +351,26 @@ export const AdminDashboard = ({
     }
   };
 
-  const filtered = products.filter((p) => {
-    const matchesSearch =
-      !searchMenu.trim() ||
-      p.name.toLowerCase().includes(searchMenu.toLowerCase()) ||
-      (p.description && p.description.toLowerCase().includes(searchMenu.toLowerCase()));
+  const filtered = useMemo(() => {
+    return products.filter((p) => {
+      const matchesSearch =
+        !searchMenu.trim() ||
+        p.name.toLowerCase().includes(searchMenu.toLowerCase()) ||
+        (p.description && p.description.toLowerCase().includes(searchMenu.toLowerCase()));
 
-    const matchesCategory =
-      selectedCategoryFilter === 'all' ||
-      p.category.toLowerCase() === selectedCategoryFilter.toLowerCase();
+      const matchesCategory =
+        selectedCategoryFilter === 'all' ||
+        p.category.toLowerCase() === selectedCategoryFilter.toLowerCase();
 
-    let matchesStatus = true;
-    if (selectedStatusFilter === 'ready') matchesStatus = p.isAvailable !== false;
-    else if (selectedStatusFilter === 'empty') matchesStatus = p.isAvailable === false;
-    else if (selectedStatusFilter === 'active') matchesStatus = p.isActive !== false;
-    else if (selectedStatusFilter === 'hidden') matchesStatus = p.isActive === false;
+      let matchesStatus = true;
+      if (selectedStatusFilter === 'ready') matchesStatus = p.isAvailable !== false;
+      else if (selectedStatusFilter === 'empty') matchesStatus = p.isAvailable === false;
+      else if (selectedStatusFilter === 'active') matchesStatus = p.isActive !== false;
+      else if (selectedStatusFilter === 'hidden') matchesStatus = p.isActive === false;
 
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [products, searchMenu, selectedCategoryFilter, selectedStatusFilter]);
 
   return (
     <div className="py-4 animate-in fade-in duration-200">
@@ -1731,36 +1733,37 @@ Mohon dicek dan info nomor rekening / QRIS pembayaran ya, Admin. Terima kasih! �
       )}
 
       {/* Modal Tambah & Edit Menu Lengkap (Kontrol Penuh Admin dengan Varian, Topping, Diskon & Status) */}
-      <AdminProductModal
-        key={editingProduct ? editingProduct.id : (isAddModalOpen ? 'add-modal' : 'none')}
-        isOpen={isAddModalOpen || Boolean(editingProduct)}
-        product={editingProduct}
-        categories={categories}
-        onClose={() => {
-          setIsAddModalOpen(false);
-          setEditingProduct(null);
-        }}
-        onDelete={(prod) => {
-          setEditingProduct(null);
-          setIsAddModalOpen(false);
-          handleRequestDeleteProduct(prod);
-        }}
-        onSave={async (savedProduct) => {
-          if (editingProduct) {
-            await onUpdateProduct(savedProduct);
-            setMenuToast(`✅ Menu "${savedProduct.name}" berhasil diperbarui dan disinkronkan ke Cloud!`);
-          } else {
-            await onAddProduct(savedProduct);
-            setMenuToast(`✅ Menu baru "${savedProduct.name}" berhasil ditambahkan ke katalog!`);
-          }
-          setTimeout(() => setMenuToast(null), 3500);
-        }}
-      />
+      {(isAddModalOpen || Boolean(editingProduct)) && (
+        <AdminProductModal
+          isOpen={true}
+          product={editingProduct}
+          categories={categories}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setEditingProduct(null);
+          }}
+          onDelete={(prod) => {
+            setEditingProduct(null);
+            setIsAddModalOpen(false);
+            handleRequestDeleteProduct(prod);
+          }}
+          onSave={async (savedProduct) => {
+            if (editingProduct) {
+              await onUpdateProduct(savedProduct);
+              setMenuToast(`✅ Menu "${savedProduct.name}" berhasil diperbarui dan disinkronkan ke Cloud!`);
+            } else {
+              await onAddProduct(savedProduct);
+              setMenuToast(`✅ Menu baru "${savedProduct.name}" berhasil ditambahkan ke katalog!`);
+            }
+            setTimeout(() => setMenuToast(null), 3500);
+          }}
+        />
+      )}
 
       {/* Modal Konfirmasi Hapus Menu (In-App Pure React Modal Dialog) */}
       {productToDelete && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-red-100 text-center space-y-4 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 transition-opacity">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-red-100 text-center space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto shadow-inner">
               <Trash2 className="w-7 h-7" />
             </div>

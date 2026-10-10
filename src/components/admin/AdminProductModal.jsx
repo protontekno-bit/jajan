@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   Check,
@@ -142,13 +142,31 @@ export const AdminProductModal = ({
 
   const [activeTab, setActiveTab] = useState('info'); // 'info' | 'variants'
 
-  // Form State initialized lazily from product prop
+  // Prevent background body scroll when modal is active (eliminates 15px layout shift flicker)
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
+
+  const defaultCat = useMemo(() => {
+    return categories.find((c) => c.id !== 'all')?.id || 'roti_bakar';
+  }, [categories]);
+
+  const selectableCategories = useMemo(() => {
+    return categories.filter((c) => c.id !== 'all');
+  }, [categories]);
+
+  // Form State initialized from product prop
   const [formData, setFormData] = useState(() => {
     if (product) {
       return {
         id: product.id,
         name: product.name || '',
-        category: product.category || (categories.find((c) => c.id !== 'all')?.id || 'roti_bakar'),
+        category: product.category || defaultCat,
         price: product.price ?? 30000,
         originalPrice: product.originalPrice ?? '',
         badge: product.badge || '',
@@ -161,7 +179,6 @@ export const AdminProductModal = ({
         order: product.order ?? 0,
       };
     }
-    const defaultCat = categories.find((c) => c.id !== 'all')?.id || 'roti_bakar';
     return {
       name: '',
       category: defaultCat,
@@ -176,6 +193,43 @@ export const AdminProductModal = ({
       variants: [],
     };
   });
+
+  // Sync form data seamlessly without remounting DOM
+  useEffect(() => {
+    if (product) {
+      setFormData({
+        id: product.id,
+        name: product.name || '',
+        category: product.category || defaultCat,
+        price: product.price ?? 30000,
+        originalPrice: product.originalPrice ?? '',
+        badge: product.badge || '',
+        rating: product.rating ?? 4.9,
+        isAvailable: product.isAvailable !== false,
+        isActive: product.isActive !== false,
+        img: product.img || '',
+        description: product.description || '',
+        variants: Array.isArray(product.variants) ? JSON.parse(JSON.stringify(product.variants)) : [],
+        order: product.order ?? 0,
+      });
+    } else {
+      setFormData({
+        name: '',
+        category: defaultCat,
+        price: 30000,
+        originalPrice: '',
+        badge: '',
+        rating: 5.0,
+        isAvailable: true,
+        isActive: true,
+        img: 'https://images.unsplash.com/photo-1584776296944-ab6fb57b0bdd?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
+        description: '',
+        variants: [],
+      });
+    }
+    setActiveTab('info');
+    setErrorMsg('');
+  }, [product, defaultCat]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -307,21 +361,21 @@ export const AdminProductModal = ({
     }
   };
 
-  const totalVariantOptions = formData.variants.reduce(
-    (acc, v) => acc + (v.options?.length || 0),
-    0
+  const totalVariantOptions = useMemo(
+    () => formData.variants.reduce((acc, v) => acc + (v.options?.length || 0), 0),
+    [formData.variants]
   );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-black/60 transition-opacity"
         onClick={onClose}
       />
 
       {/* Modal Card */}
-      <div className="relative bg-white rounded-3xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl z-10 overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="relative bg-white rounded-3xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl z-10 overflow-hidden transition-all duration-150 ease-out">
         {/* Header */}
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-orange-50/60 to-white">
           <div className="flex items-center gap-2.5">
@@ -418,13 +472,11 @@ export const AdminProductModal = ({
                     onChange={(e) => handleChange('category', e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-2xl bg-gray-50 border border-gray-200 font-bold text-xs text-gray-800 focus:bg-white focus:border-[#FF7A00] focus:outline-none transition-all cursor-pointer"
                   >
-                    {categories
-                      .filter((c) => c.id !== 'all')
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.icon} {c.name}
-                        </option>
-                      ))}
+                    {selectableCategories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.icon} {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

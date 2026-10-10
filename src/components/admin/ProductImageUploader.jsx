@@ -142,6 +142,7 @@ export const ProductImageUploader = ({ value = '', onChange, label = 'Foto Menu 
                   alt="Pratinjau Menu"
                   className="w-full h-full object-cover"
                   onError={(e) => {
+                    e.currentTarget.onerror = null;
                     e.currentTarget.src =
                       'https://images.unsplash.com/photo-1584776296944-ab6fb57b0bdd?w=500';
                   }}
