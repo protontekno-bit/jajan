@@ -310,10 +310,19 @@ export const useCatalog = () => {
 
   // Admin action: Delete a product (True Async)
   const deleteProduct = useCallback(async (productId) => {
+    const cleanId = String(productId).trim();
     if (isFirebaseConfigured()) {
-      await deleteProductFromCloud(productId);
+      await deleteProductFromCloud(cleanId);
     }
-    setProductsList((prev) => prev.filter((p) => String(p.id) !== String(productId)));
+    setProductsList((prev) => {
+      const nextList = prev.filter((p) => String(p.id).trim() !== cleanId);
+      try {
+        localStorage.setItem(APP_CONFIG.storageKeys.products, JSON.stringify(nextList));
+      } catch (err) {
+        console.warn('Failed to update localStorage on delete:', err);
+      }
+      return nextList;
+    });
     return true;
   }, []);
 

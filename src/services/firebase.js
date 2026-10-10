@@ -211,9 +211,11 @@ export const subscribeToCloudProducts = (onUpdate, onError) => {
 
         const items = [];
         snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
           items.push({
-            ...docSnap.data(),
-            id: docSnap.data().id || docSnap.id,
+            ...data,
+            id: docSnap.id,
+            docId: docSnap.id,
           });
         });
 
@@ -332,7 +334,8 @@ export const deleteProductFromCloud = async (productId) => {
     throw new Error('Koneksi Firebase Cloud Firestore belum terinisialisasi!');
   }
 
-  const docRef = doc(instances.db, 'products', String(productId));
+  const cleanId = String(productId).trim();
+  const docRef = doc(instances.db, 'products', cleanId);
   await deleteDoc(docRef);
   return true;
 };

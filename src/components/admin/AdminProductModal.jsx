@@ -136,6 +136,7 @@ export const AdminProductModal = ({
   categories = [],
   onClose,
   onSave,
+  onDelete = null,
 }) => {
   const isEditing = Boolean(product && product.id);
 
@@ -780,6 +781,18 @@ export const AdminProductModal = ({
 
           {/* Modal Footer */}
           <div className="pt-4 border-t border-gray-100 flex items-center gap-2.5">
+            {isEditing && onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(formData)}
+                disabled={isSubmitting}
+                className="px-4 py-2.5 rounded-full bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs border border-red-200 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                title="Hapus menu ini dari database katalog"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Hapus Menu</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}

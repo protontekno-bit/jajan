@@ -116,6 +116,8 @@ export const AdminDashboard = ({
   const [menuToast, setMenuToast] = useState(null);
   const [editingPriceId, setEditingPriceId] = useState(null);
   const [newPriceValue, setNewPriceValue] = useState('');
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [isDeletingProduct, setIsDeletingProduct] = useState(false);
 
   // Centralized Orders State (Pure Cloud Firestore)
   const [ordersList, setOrdersList] = useState(() => {
@@ -284,17 +286,25 @@ export const AdminDashboard = ({
     setEditingPriceId(null);
   };
 
-  const handleDeleteProduct = async (product) => {
-    if (confirm(`Hapus menu "${product.name}" dari katalog?\n\nTindakan ini akan menghapus menu secara permanen dari Cloud Firestore.`)) {
-      try {
-        if (onDeleteProduct) {
-          await onDeleteProduct(product.id);
-          setMenuToast(`🗑️ Menu "${product.name}" berhasil dihapus secara permanen dari Cloud!`);
-          setTimeout(() => setMenuToast(null), 3000);
-        }
-      } catch (err) {
-        alert(`Gagal menghapus menu dari Cloud: ${err.message || 'Akses ditolak'}`);
+  const handleRequestDeleteProduct = (product) => {
+    setProductToDelete(product);
+  };
+
+  const handleConfirmDeleteProduct = async () => {
+    if (!productToDelete) return;
+    setIsDeletingProduct(true);
+    try {
+      if (onDeleteProduct) {
+        const idToDelete = productToDelete.docId || productToDelete.id;
+        await onDeleteProduct(idToDelete);
+        setMenuToast(`🗑️ Menu "${productToDelete.name}" berhasil dihapus permanen dari Cloud Firestore!`);
+        setTimeout(() => setMenuToast(null), 3500);
       }
+      setProductToDelete(null);
+    } catch (err) {
+      alert(`Gagal menghapus menu dari Cloud Firestore: ${err.message || 'Akses ditolak'}`);
+    } finally {
+      setIsDeletingProduct(false);
     }
   };
 
@@ -1307,7 +1317,7 @@ export const AdminDashboard = ({
                       {/* Delete Menu */}
                       <button
                         type="button"
-                        onClick={() => handleDeleteProduct(product)}
+                        onClick={() => handleRequestDeleteProduct(product)}
                         className="p-1.5 rounded-full bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-600 border border-gray-200 transition-colors cursor-pointer"
                         title="Hapus Menu dari Katalog"
                       >
@@ -1730,6 +1740,11 @@ Mohon dicek dan info nomor rekening / QRIS pembayaran ya, Admin. Terima kasih! �
           setIsAddModalOpen(false);
           setEditingProduct(null);
         }}
+        onDelete={(prod) => {
+          setEditingProduct(null);
+          setIsAddModalOpen(false);
+          handleRequestDeleteProduct(prod);
+        }}
         onSave={async (savedProduct) => {
           if (editingProduct) {
             await onUpdateProduct(savedProduct);
@@ -1741,6 +1756,50 @@ Mohon dicek dan info nomor rekening / QRIS pembayaran ya, Admin. Terima kasih! �
           setTimeout(() => setMenuToast(null), 3500);
         }}
       />
+
+      {/* Modal Konfirmasi Hapus Menu (In-App Pure React Modal Dialog) */}
+      {productToDelete && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-red-100 text-center space-y-4 animate-in zoom-in-95">
+            <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto shadow-inner">
+              <Trash2 className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-gray-900 tracking-tight">
+                Hapus Menu dari Database?
+              </h3>
+              <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                Menu <span className="font-bold text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded">"{productToDelete.name}"</span> akan dihapus secara permanen dari Cloud Firestore dan tidak dapat dipulihkan.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setProductToDelete(null)}
+                disabled={isDeletingProduct}
+                className="flex-1 py-3 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteProduct}
+                disabled={isDeletingProduct}
+                className="flex-1 py-3 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-500/20 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {isDeletingProduct ? (
+                  <span>Menghapus...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Ya, Hapus Permanen</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Cetak Struk POS Thermal (58mm / 80mm untuk Dapur & Kurir) */}
       <ThermalReceiptModal
