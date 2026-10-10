@@ -116,6 +116,15 @@ export const initFirebase = () => {
   }
 };
 
+let isStorageTemporarilyDisabled = false;
+
+/**
+ * Reset storage availability cache (misalnya jika admin baru mengaktifkan Firebase Storage)
+ */
+export const resetStorageAvailabilityCache = () => {
+  isStorageTemporarilyDisabled = false;
+};
+
 /**
  * Upload compressed product image (Base64 WebP/JPEG) to Firebase Cloud Storage.
  * Returns public HTTPS download URL, or gracefully falls back to dataUrl.
@@ -127,6 +136,10 @@ export const initFirebase = () => {
 export const uploadProductImageToStorage = async (dataUrl, productId = 'new') => {
   if (!dataUrl || !dataUrl.startsWith('data:image/')) {
     return dataUrl; // Already a remote HTTP/HTTPS URL
+  }
+
+  if (isStorageTemporarilyDisabled) {
+    return dataUrl;
   }
 
   const instances = initFirebase();
@@ -153,7 +166,13 @@ export const uploadProductImageToStorage = async (dataUrl, productId = 'new') =>
     const downloadUrl = await getDownloadURL(imageRef);
     return downloadUrl;
   } catch (error) {
-    console.warn('Firebase Storage upload notice (using resilient dataUrl):', error);
+    // Jika bucket Firebase Storage belum diaktifkan di Firebase Console atau diblokir CORS preflight,
+    // tandai circuit-breaker agar proses simpan menu berikutnya tetap instan tanpa network lag atau CORS spam.
+    isStorageTemporarilyDisabled = true;
+    console.warn(
+      'Firebase Cloud Storage bucket belum aktif di Firebase Console / terkena limit CORS. Menyimpan gambar terkompresi langsung ke dokumen produk Firestore:',
+      error?.message || error
+    );
     return dataUrl; // Graceful fallback
   }
 };
