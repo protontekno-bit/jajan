@@ -154,6 +154,17 @@ export const useCart = () => {
     });
   }, []);
 
+  // Derived calculations
+  const totalItems = useMemo(
+    () => cart.reduce((sum, item) => sum + item.quantity, 0),
+    [cart]
+  );
+
+  const totalPrice = useMemo(
+    () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [cart]
+  );
+
   return {
     cart,
     addToCart,
