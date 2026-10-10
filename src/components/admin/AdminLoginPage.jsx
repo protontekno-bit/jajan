@@ -126,7 +126,7 @@ export const AdminLoginPage = ({ onLoginSuccess, onBackToCustomerPortal }) => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@beliyukjajan.com"
+                placeholder="admin@jajan.com"
                 required
                 className="w-full pl-10 pr-3.5 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-xs sm:text-sm font-medium focus:bg-white focus:outline-none focus:border-[#FF7A00] focus:ring-4 focus:ring-orange-500/10 transition-all"
               />

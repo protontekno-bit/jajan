@@ -19,6 +19,7 @@ dist-ssr
 .env.*.local
 *.local
 serviceAccountKey.json
+*-firebase-adminsdk-*.json
 *.pem
 *.key
 

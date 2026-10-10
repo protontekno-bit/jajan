@@ -51,18 +51,7 @@ export const useHeroSlides = () => {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const normalized = parsed.map(normalizeSlide);
-          const existingIds = new Set(normalized.map((s) => String(s.id)));
-          const missingDefaults = DEFAULT_HERO_SLIDES.filter(
-            (s) => !existingIds.has(String(s.id))
-          );
-          if (missingDefaults.length > 0) {
-            const merged = [...normalized, ...missingDefaults.map(normalizeSlide)];
-            merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-            localStorage.setItem(APP_CONFIG.storageKeys.heroSlides, JSON.stringify(merged));
-            return merged;
-          }
-          return normalized;
+          return parsed.map(normalizeSlide);
         }
       }
       return DEFAULT_HERO_SLIDES.map(normalizeSlide);
@@ -106,24 +95,8 @@ export const useHeroSlides = () => {
     const unsubscribe = subscribeToCloudHeroSlides(
       (cloudSlides) => {
         if (cloudSlides && cloudSlides.length > 0) {
-          const existingCloudIds = new Set(cloudSlides.map((s) => String(s.id)));
-          const missingDefaults = DEFAULT_HERO_SLIDES.filter(
-            (s) => !existingCloudIds.has(String(s.id))
-          );
-
-          if (missingDefaults.length > 0) {
-            const merged = [...cloudSlides.map(normalizeSlide), ...missingDefaults.map(normalizeSlide)];
-            merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-            setSlidesList(merged);
-            // Auto-persist missing default slides to Cloud Firestore
-            missingDefaults.forEach((slide) => {
-              saveHeroSlideToCloud(normalizeSlide(slide)).catch((err) =>
-                console.warn(`Failed to auto-sync slide ${slide.id} to cloud:`, err)
-              );
-            });
-          } else {
-            setSlidesList(cloudSlides.map(normalizeSlide));
-          }
+          // Cloud Firestore is the absolute single source of truth
+          setSlidesList(cloudSlides.map(normalizeSlide));
         } else if (cloudSlides === null) {
           // Empty collection in Firestore, auto-seed defaults
           seedHeroSlidesToCloud(DEFAULT_HERO_SLIDES.map(normalizeSlide)).catch((err) => {

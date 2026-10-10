@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { PRODUCTS } from '../data/products.js';
 import { DEFAULT_CATEGORIES } from '../data/categories.js';
 import { filterCatalog } from '../utils/filter.js';
 import { APP_CONFIG } from '../config/constants.js';
@@ -58,21 +57,9 @@ export const useCatalog = () => {
       const saved = localStorage.getItem(APP_CONFIG.storageKeys.categories);
       if (saved) {
         const parsed = JSON.parse(saved);
-        const existingIds = new Set(parsed.map((c) => String(c.id).toLowerCase()));
-        const missingDefaults = DEFAULT_CATEGORIES.filter(
-          (c) => !existingIds.has(String(c.id).toLowerCase())
-        );
-        if (missingDefaults.length > 0) {
-          const merged = [...parsed, ...missingDefaults];
-          merged.sort((a, b) => {
-            if (a.id === 'all') return -1;
-            if (b.id === 'all') return 1;
-            return (a.order ?? 0) - (b.order ?? 0);
-          });
-          localStorage.setItem(APP_CONFIG.storageKeys.categories, JSON.stringify(merged));
-          return merged;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
         }
-        return parsed;
       }
       return DEFAULT_CATEGORIES;
     } catch {
@@ -96,26 +83,8 @@ export const useCatalog = () => {
     const unsubscribe = subscribeToCloudCategories(
       (cloudCats) => {
         if (cloudCats && cloudCats.length > 0) {
-          const existingCatIds = new Set(cloudCats.map((c) => String(c.id).toLowerCase()));
-          const missingDefaults = DEFAULT_CATEGORIES.filter(
-            (c) => !existingCatIds.has(String(c.id).toLowerCase())
-          );
-          if (missingDefaults.length > 0) {
-            const mergedCats = [...cloudCats, ...missingDefaults];
-            mergedCats.sort((a, b) => {
-              if (a.id === 'all') return -1;
-              if (b.id === 'all') return 1;
-              return (a.order ?? 0) - (b.order ?? 0);
-            });
-            setCategoriesList(mergedCats);
-            missingDefaults.forEach((cat) => {
-              saveCategoryToCloud(cat).catch((err) =>
-                console.warn(`Failed to auto-sync category ${cat.id} to cloud:`, err)
-              );
-            });
-          } else {
-            setCategoriesList(cloudCats);
-          }
+          // Cloud Firestore is the single source of truth for categories
+          setCategoriesList(cloudCats);
         } else if (cloudCats === null) {
           seedCategoriesToCloud(DEFAULT_CATEGORIES).catch((err) => {
             console.warn('Auto-seed categories to Firestore failed:', err);
@@ -132,30 +101,19 @@ export const useCatalog = () => {
     };
   }, []);
 
-  // 2. Products state with localStorage persistence
+  // 2. Products state (100% Sourced from Cloud Firestore / Cache)
   const [productsList, setProductsList] = useState(() => {
     try {
       const saved = localStorage.getItem(APP_CONFIG.storageKeys.products);
       if (saved) {
         const parsed = JSON.parse(saved);
-        const existingIds = new Set(parsed.map((p) => String(p.id)));
-        const missingDefaults = PRODUCTS.filter((p) => !existingIds.has(String(p.id)));
-        if (missingDefaults.length > 0) {
-          const merged = [...parsed, ...missingDefaults];
-          merged.sort((a, b) => {
-            if (a.order !== undefined && b.order !== undefined) {
-              return (a.order ?? 0) - (b.order ?? 0);
-            }
-            return (Number(a.id) || 0) - (Number(b.id) || 0);
-          });
-          localStorage.setItem(APP_CONFIG.storageKeys.products, JSON.stringify(merged));
-          return merged;
+        if (Array.isArray(parsed)) {
+          return parsed;
         }
-        return parsed;
       }
-      return PRODUCTS.map((p, idx) => ({ ...p, order: p.order ?? idx }));
+      return [];
     } catch {
-      return PRODUCTS.map((p, idx) => ({ ...p, order: p.order ?? idx }));
+      return [];
     }
   });
 
@@ -203,33 +161,9 @@ export const useCatalog = () => {
 
     const unsubscribe = subscribeToCloudProducts(
       (cloudProducts) => {
-        if (cloudProducts && cloudProducts.length > 0) {
-          // Normalize IDs to string for reliable lookup
-          const existingCloudIds = new Set(cloudProducts.map((p) => String(p.id)));
-          const missingDefaults = PRODUCTS.filter((p) => !existingCloudIds.has(String(p.id)));
-
-          if (missingDefaults.length > 0) {
-            const merged = [...cloudProducts, ...missingDefaults];
-            merged.sort((a, b) => {
-              if (a.order !== undefined && b.order !== undefined) {
-                return (a.order ?? 0) - (b.order ?? 0);
-              }
-              return (Number(a.id) || 0) - (Number(b.id) || 0);
-            });
-            setProductsList(merged);
-            // Auto-persist missing products to Firestore so cloud database stays complete
-            missingDefaults.forEach((item, idx) => {
-              saveProductToCloud({ ...item, order: item.order ?? (cloudProducts.length + idx) }).catch((err) => {
-                console.warn(`Failed to auto-sync missing product ${item.id} to cloud:`, err);
-              });
-            });
-          } else {
-            setProductsList(cloudProducts);
-          }
-        } else if (cloudProducts === null) {
-          seedProductsToCloud(PRODUCTS).catch((err) => {
-            console.warn('Auto-seed to Firestore failed (check Firestore rules):', err);
-          });
+        if (Array.isArray(cloudProducts)) {
+          // Cloud Firestore is the absolute 100% single source of truth
+          setProductsList(cloudProducts);
         }
       },
       (error) => {
@@ -319,8 +253,8 @@ export const useCatalog = () => {
     [productsList]
   );
 
-  // Admin action: Update existing product with full attributes
-  const updateProduct = useCallback((updatedProduct) => {
+  // Admin action: Update existing product with full attributes (True Async)
+  const updateProduct = useCallback(async (updatedProduct) => {
     const sanitized = {
       ...updatedProduct,
       id: String(updatedProduct.id),
@@ -331,16 +265,21 @@ export const useCatalog = () => {
       isActive: updatedProduct.isActive !== false,
       variants: sanitizeVariants(updatedProduct.variants),
     };
-    setProductsList((prev) =>
-      prev.map((p) => (String(p.id) === String(sanitized.id) ? sanitized : p))
-    );
+
+    let resultProduct = sanitized;
     if (isFirebaseConfigured()) {
-      saveProductToCloud(sanitized).catch(console.error);
+      // Tunggu hingga Firestore Cloud benar-benar berhasil menyimpan
+      resultProduct = await saveProductToCloud(sanitized);
     }
+
+    setProductsList((prev) =>
+      prev.map((p) => (String(p.id) === String(sanitized.id) ? (resultProduct || sanitized) : p))
+    );
+    return resultProduct || sanitized;
   }, []);
 
-  // Admin action: Add a new product with full attributes
-  const addProduct = useCallback((newProduct) => {
+  // Admin action: Add a new product with full attributes (True Async)
+  const addProduct = useCallback(async (newProduct) => {
     const itemToAdd = {
       ...newProduct,
       id: newProduct.id ? String(newProduct.id) : String(Date.now()),
@@ -352,24 +291,30 @@ export const useCatalog = () => {
       order: 0,
       variants: sanitizeVariants(newProduct.variants),
     };
+
+    let resultProduct = itemToAdd;
+    if (isFirebaseConfigured()) {
+      // Tunggu hingga Firestore Cloud benar-benar berhasil menyimpan
+      resultProduct = await saveProductToCloud(itemToAdd);
+    }
+
     setProductsList((prev) => {
       const nextList = [
-        itemToAdd,
+        resultProduct || itemToAdd,
         ...prev.map((item, idx) => ({ ...item, order: idx + 1 })),
       ];
       return nextList;
     });
-    if (isFirebaseConfigured()) {
-      saveProductToCloud(itemToAdd).catch(console.error);
-    }
+    return resultProduct || itemToAdd;
   }, []);
 
-  // Admin action: Delete a product
-  const deleteProduct = useCallback((productId) => {
-    setProductsList((prev) => prev.filter((p) => String(p.id) !== String(productId)));
+  // Admin action: Delete a product (True Async)
+  const deleteProduct = useCallback(async (productId) => {
     if (isFirebaseConfigured()) {
-      deleteProductFromCloud(productId).catch(console.error);
+      await deleteProductFromCloud(productId);
     }
+    setProductsList((prev) => prev.filter((p) => String(p.id) !== String(productId)));
+    return true;
   }, []);
 
   // Admin action: Upload/Seed all local products to Cloud Firestore
@@ -383,10 +328,7 @@ export const useCatalog = () => {
 
   // Admin action: Reset to default products
   const resetProductsToDefault = useCallback(() => {
-    setProductsList(PRODUCTS);
-    if (isFirebaseConfigured()) {
-      seedProductsToCloud(PRODUCTS).catch(console.error);
-    }
+    // No-op or keep existing
   }, []);
 
   // Category Actions

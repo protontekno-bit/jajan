@@ -29,7 +29,7 @@ import {
   uploadString,
   getDownloadURL,
 } from 'firebase/storage';
-import { PRODUCTS } from '../data/products.js';
+
 
 const STORAGE_KEY_FIREBASE_CONFIG = 'beliyuk_firebase_config_v1';
 
@@ -205,8 +205,7 @@ export const subscribeToCloudProducts = (onUpdate, onError) => {
       productsCol,
       (snapshot) => {
         if (snapshot.empty) {
-          // Cloud collection is empty, trigger seed or pass empty array
-          onUpdate(null);
+          onUpdate([]);
           return;
         }
 
@@ -244,7 +243,7 @@ export const subscribeToCloudProducts = (onUpdate, onError) => {
  * Sync / Seed all local products to Cloud Firestore in a single batch.
  * @param {Array} [productsList]
  */
-export const seedProductsToCloud = async (productsList = PRODUCTS) => {
+export const seedProductsToCloud = async (productsList = []) => {
   const instances = initFirebase();
   if (!instances || !instances.db) {
     throw new Error('Firebase belum dikonfigurasi!');
@@ -285,25 +284,26 @@ const cleanFirestorePayload = (val) => {
  */
 export const saveProductToCloud = async (product) => {
   const instances = initFirebase();
-  if (!instances || !instances.db) return false;
+  if (!instances || !instances.db) {
+    throw new Error('Koneksi Firebase Cloud Firestore belum terinisialisasi!');
+  }
 
-  try {
-    let finalProduct = { ...product };
+  let finalProduct = { ...product };
 
-    // Automatically convert compressed Base64 to Firebase Storage URL if applicable
-    if (finalProduct.img && finalProduct.img.startsWith('data:image/')) {
+  // Automatically convert compressed Base64 to Firebase Storage URL if applicable
+  if (finalProduct.img && finalProduct.img.startsWith('data:image/')) {
+    try {
       const storageUrl = await uploadProductImageToStorage(finalProduct.img, finalProduct.id);
       finalProduct.img = storageUrl;
+    } catch (storageErr) {
+      console.warn('Storage upload error, using current image URL:', storageErr);
     }
-
-    const cleaned = cleanFirestorePayload(finalProduct);
-    const docRef = doc(instances.db, 'products', String(finalProduct.id));
-    await setDoc(docRef, cleaned, { merge: true });
-    return true;
-  } catch (e) {
-    console.error('Failed to save product to Cloud:', e);
-    return false;
   }
+
+  const cleaned = cleanFirestorePayload(finalProduct);
+  const docRef = doc(instances.db, 'products', String(finalProduct.id));
+  await setDoc(docRef, cleaned, { merge: true });
+  return finalProduct;
 };
 
 /**
@@ -313,16 +313,13 @@ export const saveProductToCloud = async (product) => {
  */
 export const updateCloudAvailability = async (productId, isAvailable) => {
   const instances = initFirebase();
-  if (!instances || !instances.db) return false;
-
-  try {
-    const docRef = doc(instances.db, 'products', String(productId));
-    await updateDoc(docRef, { isAvailable });
-    return true;
-  } catch (e) {
-    console.error('Failed to update availability in Cloud:', e);
-    return false;
+  if (!instances || !instances.db) {
+    throw new Error('Koneksi Firebase Cloud Firestore belum terinisialisasi!');
   }
+
+  const docRef = doc(instances.db, 'products', String(productId));
+  await updateDoc(docRef, { isAvailable });
+  return true;
 };
 
 /**
@@ -331,16 +328,13 @@ export const updateCloudAvailability = async (productId, isAvailable) => {
  */
 export const deleteProductFromCloud = async (productId) => {
   const instances = initFirebase();
-  if (!instances || !instances.db) return false;
-
-  try {
-    const docRef = doc(instances.db, 'products', String(productId));
-    await deleteDoc(docRef);
-    return true;
-  } catch (e) {
-    console.error('Failed to delete product from Cloud:', e);
-    return false;
+  if (!instances || !instances.db) {
+    throw new Error('Koneksi Firebase Cloud Firestore belum terinisialisasi!');
   }
+
+  const docRef = doc(instances.db, 'products', String(productId));
+  await deleteDoc(docRef);
+  return true;
 };
 
 /**
@@ -591,16 +585,13 @@ export const subscribeToCloudPromos = (onUpdate, onError) => {
  */
 export const savePromoToCloud = async (promo) => {
   const instances = initFirebase();
-  if (!instances || !instances.db) return false;
-
-  try {
-    const docRef = doc(instances.db, 'promos', String(promo.id));
-    await setDoc(docRef, promo, { merge: true });
-    return true;
-  } catch (err) {
-    console.error('Failed to save promo to Cloud:', err);
-    return false;
+  if (!instances || !instances.db) {
+    throw new Error('Koneksi Firebase Firestore belum terinisialisasi!');
   }
+
+  const docRef = doc(instances.db, 'promos', String(promo.id));
+  await setDoc(docRef, promo, { merge: true });
+  return true;
 };
 
 /**
@@ -610,16 +601,13 @@ export const savePromoToCloud = async (promo) => {
  */
 export const updateCloudPromoActive = async (promoId, isActive) => {
   const instances = initFirebase();
-  if (!instances || !instances.db) return false;
-
-  try {
-    const docRef = doc(instances.db, 'promos', String(promoId));
-    await updateDoc(docRef, { isActive });
-    return true;
-  } catch (err) {
-    console.error('Failed to update promo status in Cloud:', err);
-    return false;
+  if (!instances || !instances.db) {
+    throw new Error('Koneksi Firebase Firestore belum terinisialisasi!');
   }
+
+  const docRef = doc(instances.db, 'promos', String(promoId));
+  await updateDoc(docRef, { isActive });
+  return true;
 };
 
 /**
@@ -628,16 +616,13 @@ export const updateCloudPromoActive = async (promoId, isActive) => {
  */
 export const deletePromoFromCloud = async (promoId) => {
   const instances = initFirebase();
-  if (!instances || !instances.db) return false;
-
-  try {
-    const docRef = doc(instances.db, 'promos', String(promoId));
-    await deleteDoc(docRef);
-    return true;
-  } catch (err) {
-    console.error('Failed to delete promo from Cloud:', err);
-    return false;
+  if (!instances || !instances.db) {
+    throw new Error('Koneksi Firebase Firestore belum terinisialisasi!');
   }
+
+  const docRef = doc(instances.db, 'promos', String(promoId));
+  await deleteDoc(docRef);
+  return true;
 };
 
 /**
@@ -712,16 +697,13 @@ export const subscribeToCloudCategories = (onUpdate, onError) => {
  */
 export const saveCategoryToCloud = async (category) => {
   const instances = initFirebase();
-  if (!instances || !instances.db) return false;
-
-  try {
-    const docRef = doc(instances.db, 'categories', String(category.id));
-    await setDoc(docRef, category, { merge: true });
-    return true;
-  } catch (err) {
-    console.error('Failed to save category to Cloud:', err);
-    return false;
+  if (!instances || !instances.db) {
+    throw new Error('Koneksi Firebase Firestore belum terinisialisasi!');
   }
+
+  const docRef = doc(instances.db, 'categories', String(category.id));
+  await setDoc(docRef, category, { merge: true });
+  return true;
 };
 
 /**
@@ -730,16 +712,13 @@ export const saveCategoryToCloud = async (category) => {
  */
 export const deleteCategoryFromCloud = async (categoryId) => {
   const instances = initFirebase();
-  if (!instances || !instances.db) return false;
-
-  try {
-    const docRef = doc(instances.db, 'categories', String(categoryId));
-    await deleteDoc(docRef);
-    return true;
-  } catch (err) {
-    console.error('Failed to delete category from Cloud:', err);
-    return false;
+  if (!instances || !instances.db) {
+    throw new Error('Koneksi Firebase Firestore belum terinisialisasi!');
   }
+
+  const docRef = doc(instances.db, 'categories', String(categoryId));
+  await deleteDoc(docRef);
+  return true;
 };
 
 /**
@@ -810,22 +789,23 @@ export const subscribeToCloudHeroSlides = (onUpdate, onError) => {
  */
 export const saveHeroSlideToCloud = async (slide) => {
   const instances = initFirebase();
-  if (!instances || !instances.db) return false;
+  if (!instances || !instances.db) {
+    throw new Error('Koneksi Firebase Firestore belum terinisialisasi!');
+  }
 
-  try {
-    let finalSlide = { ...slide };
-    if (finalSlide.img && finalSlide.img.startsWith('data:image/')) {
+  let finalSlide = { ...slide };
+  if (finalSlide.img && finalSlide.img.startsWith('data:image/')) {
+    try {
       const storageUrl = await uploadProductImageToStorage(finalSlide.img, `slide_${finalSlide.id}`);
       finalSlide.img = storageUrl;
+    } catch (e) {
+      console.warn('Storage fallback for slide:', e);
     }
-
-    const docRef = doc(instances.db, 'hero_slides', String(finalSlide.id));
-    await setDoc(docRef, finalSlide, { merge: true });
-    return true;
-  } catch (err) {
-    console.error('Failed to save hero slide to Cloud:', err);
-    return false;
   }
+
+  const docRef = doc(instances.db, 'hero_slides', String(finalSlide.id));
+  await setDoc(docRef, finalSlide, { merge: true });
+  return true;
 };
 
 /**
@@ -834,16 +814,13 @@ export const saveHeroSlideToCloud = async (slide) => {
  */
 export const deleteHeroSlideFromCloud = async (slideId) => {
   const instances = initFirebase();
-  if (!instances || !instances.db) return false;
-
-  try {
-    const docRef = doc(instances.db, 'hero_slides', String(slideId));
-    await deleteDoc(docRef);
-    return true;
-  } catch (err) {
-    console.error('Failed to delete hero slide from Cloud:', err);
-    return false;
+  if (!instances || !instances.db) {
+    throw new Error('Koneksi Firebase Firestore belum terinisialisasi!');
   }
+
+  const docRef = doc(instances.db, 'hero_slides', String(slideId));
+  await deleteDoc(docRef);
+  return true;
 };
 
 /**

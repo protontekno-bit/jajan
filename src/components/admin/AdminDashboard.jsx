@@ -117,17 +117,13 @@ export const AdminDashboard = ({
   const [editingPriceId, setEditingPriceId] = useState(null);
   const [newPriceValue, setNewPriceValue] = useState('');
 
-  // Centralized Orders State (from Cloud Firestore)
+  // Centralized Orders State (Pure Cloud Firestore)
   const [ordersList, setOrdersList] = useState(() => {
     try {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('beliyuk_orders_v1'); // Purge legacy mock storage key
-      }
       const saved = localStorage.getItem(APP_CONFIG.storageKeys.orders);
       if (!saved) return [];
       const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter((o) => o && o.id !== 'BJ-202610-01' && o.customerName !== 'Siti Rahma');
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }
@@ -148,10 +144,7 @@ export const AdminDashboard = ({
     const unsubscribe = subscribeToCloudOrders(
       (cloudOrders) => {
         if (cloudOrders && Array.isArray(cloudOrders)) {
-          const authenticOnly = cloudOrders.filter(
-            (o) => o && o.id !== 'BJ-202610-01' && o.customerName !== 'Siti Rahma'
-          );
-          setOrdersList(authenticOnly);
+          setOrdersList(cloudOrders);
         }
       },
       (err) => {
@@ -277,18 +270,30 @@ export const AdminDashboard = ({
     setNewPriceValue(product.price.toString());
   };
 
-  const handleSavePrice = (product) => {
+  const handleSavePrice = async (product) => {
     const parsed = parseInt(newPriceValue, 10);
     if (!isNaN(parsed) && parsed > 0) {
-      onUpdateProduct({ ...product, price: parsed });
+      try {
+        await onUpdateProduct({ ...product, price: parsed });
+        setMenuToast(`✅ Harga "${product.name}" berhasil diperbarui ke ${formatRupiah(parsed)} di Cloud!`);
+        setTimeout(() => setMenuToast(null), 2500);
+      } catch (err) {
+        alert(`Gagal memperbarui harga ke database: ${err.message || 'Akses ditolak / offline'}`);
+      }
     }
     setEditingPriceId(null);
   };
 
-  const handleDeleteProduct = (product) => {
-    if (confirm(`Hapus menu "${product.name}" dari katalog?`)) {
-      if (onDeleteProduct) {
-        onDeleteProduct(product.id);
+  const handleDeleteProduct = async (product) => {
+    if (confirm(`Hapus menu "${product.name}" dari katalog?\n\nTindakan ini akan menghapus menu secara permanen dari Cloud Firestore.`)) {
+      try {
+        if (onDeleteProduct) {
+          await onDeleteProduct(product.id);
+          setMenuToast(`🗑️ Menu "${product.name}" berhasil dihapus secara permanen dari Cloud!`);
+          setTimeout(() => setMenuToast(null), 3000);
+        }
+      } catch (err) {
+        alert(`Gagal menghapus menu dari Cloud: ${err.message || 'Akses ditolak'}`);
       }
     }
   };
