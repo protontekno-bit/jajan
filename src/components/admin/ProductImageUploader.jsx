@@ -37,7 +37,7 @@ export const ProductImageUploader = ({ value = '', onChange, label = 'Foto Menu 
     setErrorMsg('');
     setIsCompressing(true);
     try {
-      const result = await compressImageFile(file, 600, 600, 0.82);
+      const result = await compressImageFile(file, 500, 500, 0.78);
       onChange(result.dataUrl);
       setCompressionMetrics({
         original: result.originalSizeStr,
@@ -296,6 +296,13 @@ export const ProductImageUploader = ({ value = '', onChange, label = 'Foto Menu 
           <span>{errorMsg}</span>
         </div>
       )}
+      {/* Banner Edukasi Opsi 1 Gratis */}
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100 text-[11px] text-emerald-850">
+        <Sparkles className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+        <p>
+          <strong className="font-extrabold text-emerald-900">Opsi Gratis Aktif (Spark Plan):</strong> Foto otomatis dioptimalkan ke WebP (~15-20 KB), langsung tersimpan aman di Cloud Firestore tanpa biaya kartu kredit.
+        </p>
+      </div>
     </div>
   );
 };

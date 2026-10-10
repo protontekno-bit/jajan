@@ -116,65 +116,18 @@ export const initFirebase = () => {
   }
 };
 
-let isStorageTemporarilyDisabled = false;
-
 /**
- * Reset storage availability cache (misalnya jika admin baru mengaktifkan Firebase Storage)
- */
-export const resetStorageAvailabilityCache = () => {
-  isStorageTemporarilyDisabled = false;
-};
-
-/**
- * Upload compressed product image (Base64 WebP/JPEG) to Firebase Cloud Storage.
- * Returns public HTTPS download URL, or gracefully falls back to dataUrl.
+ * Opsi 1: In-Database Optimized WebP Storage (100% Gratis di Firebase Spark Plan).
+ * Menghindari biaya Blaze plan / verifikasi kartu kredit Google Cloud.
+ * Gambar otomatis dikompresi menjadi WebP ringan (~15-20 KB) dan disimpan langsung di Firestore.
  *
  * @param {string} dataUrl - Compressed data URL
  * @param {string|number} [productId] - Associated product ID
- * @returns {Promise<string>} Public HTTPS Download URL or fallback dataUrl
+ * @returns {Promise<string>} Compressed WebP dataUrl
  */
 export const uploadProductImageToStorage = async (dataUrl, productId = 'new') => {
-  if (!dataUrl || !dataUrl.startsWith('data:image/')) {
-    return dataUrl; // Already a remote HTTP/HTTPS URL
-  }
-
-  if (isStorageTemporarilyDisabled) {
-    return dataUrl;
-  }
-
-  const instances = initFirebase();
-  if (!instances || !instances.storage) {
-    console.warn('Firebase Storage not ready, fallback to local compressed dataUrl.');
-    return dataUrl;
-  }
-
-  try {
-    const timestamp = Date.now();
-    const cleanId = String(productId).replace(/[^a-zA-Z0-9_-]/g, '_');
-    const path = `products/menu_${cleanId}_${timestamp}.webp`;
-    const imageRef = storageRef(instances.storage, path);
-
-    const metadata = {
-      contentType: dataUrl.startsWith('data:image/webp') ? 'image/webp' : 'image/jpeg',
-      customMetadata: {
-        app: 'Beliyuk Jajan',
-        uploadedAt: new Date().toISOString(),
-      },
-    };
-
-    await uploadString(imageRef, dataUrl, 'data_url', metadata);
-    const downloadUrl = await getDownloadURL(imageRef);
-    return downloadUrl;
-  } catch (error) {
-    // Jika bucket Firebase Storage belum diaktifkan di Firebase Console atau diblokir CORS preflight,
-    // tandai circuit-breaker agar proses simpan menu berikutnya tetap instan tanpa network lag atau CORS spam.
-    isStorageTemporarilyDisabled = true;
-    console.warn(
-      'Firebase Cloud Storage bucket belum aktif di Firebase Console / terkena limit CORS. Menyimpan gambar terkompresi langsung ke dokumen produk Firestore:',
-      error?.message || error
-    );
-    return dataUrl; // Graceful fallback
-  }
+  // Langsung kembalikan gambar terkompresi tanpa network call ke Cloud Storage yang meminta Blaze plan
+  return dataUrl;
 };
 
 /**
