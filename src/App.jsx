@@ -152,7 +152,15 @@ export default function App() {
     totalItems,
     totalPrice,
     isAnimating,
+    validateCartAgainstCatalog,
   } = useCart();
+
+  // Otomatis bersihkan / perbarui produk di keranjang jika menu diubah/dihapus di database
+  useEffect(() => {
+    if (allProducts && allProducts.length > 0) {
+      validateCartAgainstCatalog(allProducts);
+    }
+  }, [allProducts, validateCartAgainstCatalog]);
 
   // Order Receipts Hook
   const { orders, addOrder, clearOrders } = useOrders();

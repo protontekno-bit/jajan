@@ -28,6 +28,7 @@ import {
   ref as storageRef,
   uploadString,
   getDownloadURL,
+  deleteObject,
 } from 'firebase/storage';
 
 
@@ -319,16 +320,42 @@ export const updateCloudAvailability = async (productId, isAvailable) => {
     throw new Error('Koneksi Firebase Cloud Firestore belum terinisialisasi!');
   }
 
-  const docRef = doc(instances.db, 'products', String(productId));
+  const cleanId = String(productId).trim();
+  const docRef = doc(instances.db, 'products', cleanId);
   await updateDoc(docRef, { isAvailable });
   return true;
 };
 
 /**
- * Delete a product from Cloud Firestore.
- * @param {string|number} productId
+ * Swap order position of two products in a single lightweight batch write.
+ * Consumes only 2 writes instead of rewriting the entire database.
+ * @param {Object} prod1 - First product with new order
+ * @param {Object} prod2 - Second product with new order
  */
-export const deleteProductFromCloud = async (productId) => {
+export const swapProductOrders = async (prod1, prod2) => {
+  const instances = initFirebase();
+  if (!instances || !instances.db) {
+    throw new Error('Koneksi Firebase Cloud Firestore belum terinisialisasi!');
+  }
+
+  const batch = writeBatch(instances.db);
+  const ref1 = doc(instances.db, 'products', String(prod1.id).trim());
+  const ref2 = doc(instances.db, 'products', String(prod2.id).trim());
+
+  batch.update(ref1, { order: Number(prod1.order) || 0 });
+  batch.update(ref2, { order: Number(prod2.order) || 0 });
+
+  await batch.commit();
+  return true;
+};
+
+/**
+ * Delete a product from Cloud Firestore and automatically clean up its
+ * uploaded image from Firebase Cloud Storage to prevent storage leaks.
+ * @param {string|number} productId
+ * @param {string} [imageUrl] - Product image URL
+ */
+export const deleteProductFromCloud = async (productId, imageUrl = null) => {
   const instances = initFirebase();
   if (!instances || !instances.db) {
     throw new Error('Koneksi Firebase Cloud Firestore belum terinisialisasi!');
@@ -337,6 +364,22 @@ export const deleteProductFromCloud = async (productId) => {
   const cleanId = String(productId).trim();
   const docRef = doc(instances.db, 'products', cleanId);
   await deleteDoc(docRef);
+
+  // Clean up physical file in Firebase Cloud Storage if applicable
+  if (
+    imageUrl &&
+    instances.storage &&
+    typeof imageUrl === 'string' &&
+    (imageUrl.includes('firebasestorage.googleapis.com') || imageUrl.includes('products/menu_'))
+  ) {
+    try {
+      const imgRef = storageRef(instances.storage, imageUrl);
+      await deleteObject(imgRef);
+    } catch (storageErr) {
+      console.warn('Firebase Storage image cleanup notice (non-fatal):', storageErr);
+    }
+  }
+
   return true;
 };
 

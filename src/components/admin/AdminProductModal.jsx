@@ -344,6 +344,40 @@ export const AdminProductModal = ({
       return;
     }
 
+    // Validasi Varian & Opsi agar pembeli di storefront tidak terjebak (stuck)
+    if (formData.variants && formData.variants.length > 0) {
+      for (let gIdx = 0; gIdx < formData.variants.length; gIdx++) {
+        const group = formData.variants[gIdx];
+        if (!group.name || !group.name.trim()) {
+          setErrorMsg(`Grup varian ke-${gIdx + 1} belum memiliki nama!`);
+          setActiveTab('variants');
+          return;
+        }
+
+        const validOptions = (group.options || []).filter((opt) => opt && opt.name && opt.name.trim());
+        if (validOptions.length === 0) {
+          setErrorMsg(`Grup varian "${group.name}" wajib memiliki minimal 1 pilihan opsi.`);
+          setActiveTab('variants');
+          return;
+        }
+      }
+    }
+
+    // Sanitasi varian data sebelum dikirim
+    const sanitizedVariants = (formData.variants || []).map((group, gIdx) => ({
+      id: group.id || `var_${Date.now()}_${gIdx}`,
+      name: group.name.trim(),
+      type: group.type === 'checkbox' ? 'checkbox' : 'radio',
+      required: Boolean(group.required),
+      options: (group.options || [])
+        .filter((opt) => opt && opt.name && opt.name.trim())
+        .map((opt, oIdx) => ({
+          id: opt.id || `opt_${Date.now()}_${gIdx}_${oIdx}`,
+          name: opt.name.trim(),
+          priceExtra: Math.max(0, Number(opt.priceExtra) || 0),
+        })),
+    }));
+
     setIsSubmitting(true);
     try {
       const payload = {
@@ -351,6 +385,7 @@ export const AdminProductModal = ({
         price: priceNum,
         originalPrice: origPriceNum,
         rating: Number(formData.rating) || 4.9,
+        variants: sanitizedVariants,
       };
       await onSave(payload);
       onClose();

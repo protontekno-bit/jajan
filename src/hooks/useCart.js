@@ -107,16 +107,52 @@ export const useCart = () => {
     setCart([]);
   }, []);
 
-  // Derived calculations
-  const totalItems = useMemo(
-    () => cart.reduce((sum, item) => sum + item.quantity, 0),
-    [cart]
-  );
+  /**
+   * Validates cart items against the current live catalog.
+   * Drops items that no longer exist or have been hidden (isActive === false).
+   * Updates product metadata & price if changed in the catalog.
+   */
+  const validateCartAgainstCatalog = useCallback((catalogProducts) => {
+    if (!Array.isArray(catalogProducts) || catalogProducts.length === 0) return;
 
-  const totalPrice = useMemo(
-    () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    [cart]
-  );
+    setCart((prevCart) => {
+      let changed = false;
+      const validItems = [];
+
+      for (const item of prevCart) {
+        const catalogItem = catalogProducts.find(
+          (p) => String(p.id).trim() === String(item.id).trim()
+        );
+
+        // Jika item sudah dihapus permanen atau dinonaktifkan dari katalog
+        if (!catalogItem || catalogItem.isActive === false) {
+          changed = true;
+          continue;
+        }
+
+        // Sinkronisasi data dasar produk
+        if (
+          catalogItem.name !== item.name ||
+          catalogItem.img !== item.img ||
+          (catalogItem.price !== item.basePrice && catalogItem.price !== item.price)
+        ) {
+          const extraPrice = Math.max(0, (item.price || 0) - (item.basePrice || catalogItem.price || 0));
+          validItems.push({
+            ...item,
+            name: catalogItem.name,
+            img: catalogItem.img,
+            basePrice: catalogItem.price,
+            price: catalogItem.price + extraPrice,
+          });
+          changed = true;
+        } else {
+          validItems.push(item);
+        }
+      }
+
+      return changed ? validItems : prevCart;
+    });
+  }, []);
 
   return {
     cart,
@@ -128,5 +164,6 @@ export const useCart = () => {
     totalPrice,
     isAnimating,
     lastAddedItem,
+    validateCartAgainstCatalog,
   };
 };

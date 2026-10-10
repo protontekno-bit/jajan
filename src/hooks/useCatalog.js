@@ -8,6 +8,7 @@ import {
   saveProductToCloud,
   updateCloudAvailability,
   deleteProductFromCloud,
+  swapProductOrders,
   seedProductsToCloud,
   subscribeToCloudCategories,
   saveCategoryToCloud,
@@ -176,45 +177,48 @@ export const useCatalog = () => {
     };
   }, []);
 
-  // Admin action: Toggle ready / out of stock
-  const toggleAvailability = useCallback((productId) => {
-    setProductsList((prev) => {
-      let updatedProd = null;
-      const updated = prev.map((p) => {
-        if (String(p.id) === String(productId)) {
-          const nextVal = !p.isAvailable;
-          updatedProd = { ...p, isAvailable: nextVal };
-          return updatedProd;
-        }
-        return p;
-      });
-      if (isFirebaseConfigured() && updatedProd) {
-        updateCloudAvailability(productId, updatedProd.isAvailable).catch(console.error);
-      }
-      return updated;
-    });
-  }, []);
+  // Admin action: Toggle ready / out of stock (True Async)
+  const toggleAvailability = useCallback(
+    async (productId) => {
+      const cleanId = String(productId).trim();
+      const target = productsList.find((p) => String(p.id).trim() === cleanId);
+      if (!target) return;
+      const nextVal = !target.isAvailable;
 
-  // Admin action: Toggle product visibility in customer catalog (Tampilkan / Sembunyikan)
-  const toggleProductActive = useCallback((productId) => {
-    setProductsList((prev) => {
-      let updatedProd = null;
-      const updated = prev.map((p) => {
-        if (String(p.id) === String(productId)) {
-          const nextVal = p.isActive === false;
-          updatedProd = { ...p, isActive: nextVal };
-          return updatedProd;
-        }
-        return p;
-      });
-      if (isFirebaseConfigured() && updatedProd) {
-        saveProductToCloud(updatedProd).catch(console.error);
+      if (isFirebaseConfigured()) {
+        await updateCloudAvailability(cleanId, nextVal);
       }
-      return updated;
-    });
-  }, []);
 
-  // Admin action: Move product position up or down in catalog
+      setProductsList((prev) =>
+        prev.map((p) => (String(p.id).trim() === cleanId ? { ...p, isAvailable: nextVal } : p))
+      );
+      return nextVal;
+    },
+    [productsList]
+  );
+
+  // Admin action: Toggle product visibility in customer catalog (Tampilkan / Sembunyikan - True Async)
+  const toggleProductActive = useCallback(
+    async (productId) => {
+      const cleanId = String(productId).trim();
+      const target = productsList.find((p) => String(p.id).trim() === cleanId);
+      if (!target) return;
+      const nextVal = target.isActive === false;
+      const updatedProd = { ...target, isActive: nextVal };
+
+      if (isFirebaseConfigured()) {
+        await saveProductToCloud(updatedProd);
+      }
+
+      setProductsList((prev) =>
+        prev.map((p) => (String(p.id).trim() === cleanId ? updatedProd : p))
+      );
+      return nextVal;
+    },
+    [productsList]
+  );
+
+  // Admin action: Move product position up or down in catalog (Optimized 2-doc batch write)
   const moveProduct = useCallback(
     async (productId, direction) => {
       const idx = productsList.findIndex((p) => String(p.id) === String(productId));
@@ -223,15 +227,20 @@ export const useCatalog = () => {
       const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
       if (targetIdx < 0 || targetIdx >= productsList.length) return productsList;
 
-      const updated = [...productsList];
-      const temp = updated[idx];
-      updated[idx] = updated[targetIdx];
-      updated[targetIdx] = temp;
+      const itemA = productsList[idx];
+      const itemB = productsList[targetIdx];
 
-      const reordered = updated.map((item, i) => ({
-        ...item,
-        order: i,
-      }));
+      const orderA = itemA.order ?? idx;
+      const orderB = itemB.order ?? targetIdx;
+
+      const updatedItemA = { ...itemA, order: orderB };
+      const updatedItemB = { ...itemB, order: orderA };
+
+      const updated = [...productsList];
+      updated[idx] = updatedItemB;
+      updated[targetIdx] = updatedItemA;
+
+      const reordered = updated.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
       setProductsList(reordered);
       try {
@@ -242,9 +251,10 @@ export const useCatalog = () => {
 
       if (isFirebaseConfigured()) {
         try {
-          await seedProductsToCloud(reordered);
+          await swapProductOrders(updatedItemA, updatedItemB);
         } catch (err) {
-          console.warn('Failed to sync reordered products to Cloud:', err);
+          console.warn('Failed to sync swapped product orders to Cloud, falling back to batch update:', err);
+          await seedProductsToCloud(reordered);
         }
       }
 
@@ -308,23 +318,27 @@ export const useCatalog = () => {
     return resultProduct || itemToAdd;
   }, []);
 
-  // Admin action: Delete a product (True Async)
-  const deleteProduct = useCallback(async (productId) => {
-    const cleanId = String(productId).trim();
-    if (isFirebaseConfigured()) {
-      await deleteProductFromCloud(cleanId);
-    }
-    setProductsList((prev) => {
-      const nextList = prev.filter((p) => String(p.id).trim() !== cleanId);
-      try {
-        localStorage.setItem(APP_CONFIG.storageKeys.products, JSON.stringify(nextList));
-      } catch (err) {
-        console.warn('Failed to update localStorage on delete:', err);
+  // Admin action: Delete a product (True Async with Storage Cleanup)
+  const deleteProduct = useCallback(
+    async (productId) => {
+      const cleanId = String(productId).trim();
+      const target = productsList.find((p) => String(p.id).trim() === cleanId);
+      if (isFirebaseConfigured()) {
+        await deleteProductFromCloud(cleanId, target?.img);
       }
-      return nextList;
-    });
-    return true;
-  }, []);
+      setProductsList((prev) => {
+        const nextList = prev.filter((p) => String(p.id).trim() !== cleanId);
+        try {
+          localStorage.setItem(APP_CONFIG.storageKeys.products, JSON.stringify(nextList));
+        } catch (err) {
+          console.warn('Failed to update localStorage on delete:', err);
+        }
+        return nextList;
+      });
+      return true;
+    },
+    [productsList]
+  );
 
   // Admin action: Upload/Seed all local products to Cloud Firestore
   const syncLocalToCloud = useCallback(async () => {
@@ -377,17 +391,34 @@ export const useCatalog = () => {
     }
   }, []);
 
-  const deleteCategory = useCallback(async (catId) => {
-    if (catId === 'all') {
-      alert('Kategori "Semua Menu" adalah kategori utama sistem dan tidak dapat dihapus.');
-      return false;
-    }
-    setCategoriesList((prev) => prev.filter((c) => c.id !== catId));
-    if (isFirebaseConfigured()) {
-      await deleteCategoryFromCloud(catId);
-    }
-    return true;
-  }, []);
+  const deleteCategory = useCallback(
+    async (catId) => {
+      if (catId === 'all') {
+        alert('Kategori "Semua Menu" adalah kategori utama sistem dan tidak dapat dihapus.');
+        return false;
+      }
+      const fallbackCat =
+        categoriesList.find((c) => c.id !== 'all' && c.id !== catId)?.id || 'roti_bakar';
+
+      const affectedProducts = productsList.filter((p) => p.category === catId);
+
+      setCategoriesList((prev) => prev.filter((c) => c.id !== catId));
+      if (isFirebaseConfigured()) {
+        await deleteCategoryFromCloud(catId);
+        for (const prod of affectedProducts) {
+          await saveProductToCloud({ ...prod, category: fallbackCat });
+        }
+      }
+
+      if (affectedProducts.length > 0) {
+        setProductsList((prev) =>
+          prev.map((p) => (p.category === catId ? { ...p, category: fallbackCat } : p))
+        );
+      }
+      return true;
+    },
+    [categoriesList, productsList]
+  );
 
   const resetCategoriesToDefault = useCallback(async () => {
     setCategoriesList(DEFAULT_CATEGORIES);

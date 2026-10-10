@@ -274,14 +274,20 @@ export const AdminDashboard = ({
 
   const handleSavePrice = async (product) => {
     const parsed = parseInt(newPriceValue, 10);
-    if (!isNaN(parsed) && parsed > 0) {
+    if (!isNaN(parsed) && parsed >= 1000) {
       try {
-        await onUpdateProduct({ ...product, price: parsed });
+        let updatedOrigPrice = product.originalPrice;
+        if (updatedOrigPrice && Number(updatedOrigPrice) <= parsed) {
+          updatedOrigPrice = null;
+        }
+        await onUpdateProduct({ ...product, price: parsed, originalPrice: updatedOrigPrice });
         setMenuToast(`✅ Harga "${product.name}" berhasil diperbarui ke ${formatRupiah(parsed)} di Cloud!`);
         setTimeout(() => setMenuToast(null), 2500);
       } catch (err) {
         alert(`Gagal memperbarui harga ke database: ${err.message || 'Akses ditolak / offline'}`);
       }
+    } else if (newPriceValue) {
+      alert('Harga harus berupa angka minimal Rp 1.000!');
     }
     setEditingPriceId(null);
   };
@@ -1279,7 +1285,17 @@ export const AdminDashboard = ({
                       {/* Stock Ready / Habis */}
                       <button
                         type="button"
-                        onClick={() => onToggleAvailability(product.id)}
+                        onClick={async () => {
+                          try {
+                            const nextState = await onToggleAvailability(product.id);
+                            setMenuToast(
+                              `Stok "${product.name}" sekarang: ${nextState ? '🟢 Tersedia' : '🔴 Habis'}`
+                            );
+                            setTimeout(() => setMenuToast(null), 2500);
+                          } catch (err) {
+                            alert(`Gagal mengubah stok: ${err.message || 'Koneksi bermasalah'}`);
+                          }
+                        }}
                         className={`px-3 py-1.5 rounded-full font-bold text-xs transition-all cursor-pointer ${
                           isAvailable
                             ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
@@ -1293,7 +1309,19 @@ export const AdminDashboard = ({
                       {/* Visibility Toggle (Tampil / Sembunyi) */}
                       <button
                         type="button"
-                        onClick={() => onToggleProductActive && onToggleProductActive(product.id)}
+                        onClick={async () => {
+                          try {
+                            if (onToggleProductActive) {
+                              const nextState = await onToggleProductActive(product.id);
+                              setMenuToast(
+                                `Visibilitas "${product.name}": ${nextState ? '👁️ Ditampilkan' : '🔒 Disembunyikan'}`
+                              );
+                              setTimeout(() => setMenuToast(null), 2500);
+                            }
+                          } catch (err) {
+                            alert(`Gagal mengubah visibilitas: ${err.message || 'Koneksi bermasalah'}`);
+                          }
+                        }}
                         className={`px-2.5 py-1.5 rounded-full font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
                           isVisible
                             ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
